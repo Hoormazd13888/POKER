@@ -3,165 +3,245 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POKER GIFT</title>
+    <title>POKER GIFT - Arena</title>
     <link rel="stylesheet" href="/style.css">
+    <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
     <div class="app-container">
         
-        <!-- صفحه اول: منوی بازی‌ها (لابی) -->
-        <div id="lobby-page" class="page active">
+        <!-- ================= صفحه اصلی: بازی آرنا ================= -->
+        <div id="page-games" class="app-page active">
             <header class="top-header">
-                <button class="close-btn">✕ Close</button>
-                <div class="brand-title">
-                    <span>🚀</span> <strong>POKER GIFT</strong>
-                </div>
+                <div class="brand-title"><span>🚀</span> <strong>POKER GIFT</strong></div>
+                <div class="live-badge-box"><span class="dot"></span> <span id="live-players-count">LIVE (0)</span></div>
             </header>
 
-            <div class="lobby-user-bar">
-                <div class="avatar-box">👤</div>
-                <div class="balance-info">
-                    <span class="bal-title">Your balance</span>
-                    <span class="bal-amount">0 💎</span>
+            <!-- اطلاعات کاربر و موجودی -->
+            <div class="user-bar">
+                <div class="balance-pill">
+                    <span id="user-balance">0.00</span> 💎
+                    <button class="plus-btn" onclick="openDeposit()">+</button>
                 </div>
-                <button class="deposit-btn-main">Deposit</button>
+                <button class="deposit-main-btn" onclick="openDeposit()">Deposit</button>
             </div>
 
-            <div class="quick-chips">
-                <div class="chip-item">+0.0198</div>
-                <div class="chip-item">+0.232</div>
-                <div class="chip-item">+0.0261</div>
-                <div class="chip-item">+0.0297</div>
+            <!-- بانک و جایزه کل -->
+            <div class="bank-row">
+                <div class="bank-display">
+                    Bank Pool: <span id="bank-amount">0.00</span> TON
+                </div>
             </div>
 
-            <!-- دکمه روزانه -->
-            <div class="banner-card spin-banner">
+            <!-- گردونه / چرخش شانس (قابلیت فعال/غیرفعال توسط ادمین) -->
+            <div class="banner-card spin-banner" id="wheel-card" onclick="spinWheel()">
                 <div class="banner-text">
-                    <h3>Daily Free Spin</h3>
-                    <p>Next spin in 0h 24m 40s</p>
+                    <h3 id="wheel-title">Daily Free Spin 🎁</h3>
+                    <p id="wheel-status-text">Click to spin & win prizes!</p>
                 </div>
-                <div class="banner-icon">🎁</div>
+                <div class="banner-icon">🎡</div>
             </div>
 
-            <!-- بازی کرش -->
-            <div class="banner-card crash-banner">
-                <div class="live-tag">🟢 Live</div>
-                <div class="banner-text">
-                    <h3>Crash</h3>
-                    <p>Cash out before the rocket explodes</p>
+            <!-- کارت گرافیکی اصلی آرنا -->
+            <div class="arena-card">
+                <div class="wheel-center-badge">
+                    <div id="timer-display">15</div>
                 </div>
-                <div class="banner-badge">x2.36</div>
             </div>
 
-            <!-- بازی آرنا (با کلیک روی این، وارد صفحه بازی می‌شوید) -->
-            <div class="banner-card arena-banner" id="open-arena-btn">
-                <div class="live-tag">🟢 Live</div>
-                <div class="banner-text">
-                    <h3>Arena</h3>
-                    <p>Battle against other players</p>
+            <!-- لیست بازیکنان زنده و برندگان واقعی -->
+            <div class="players-section">
+                <div class="section-header">
+                    <h3>Active Players</h3>
+                    <span id="game-id">Game #16128</span>
                 </div>
-                <div class="banner-icon">⚔️</div>
+                <div id="players-list" class="players-list">
+                    <div class="no-players">No players in this round yet. Join below!</div>
+                </div>
             </div>
 
-            <!-- بازی مینز -->
-            <div class="banner-card mines-banner">
-                <div class="new-tag">New</div>
-                <div class="banner-text">
-                    <h3>Mines</h3>
-                    <p>Find the prizes without hitting a mine</p>
-                </div>
-                <div class="banner-icon">💣</div>
+            <!-- کنترل‌های ثبت شرط (مربوط به حجم برد و حجم بازی) -->
+            <div class="bet-controls-bar">
+                <button class="bet-chip" onclick="joinGame(0.01)">0.01 💎</button>
+                <button class="bet-chip" onclick="joinGame(0.1)">0.1 💎</button>
+                <button class="bet-chip" onclick="joinGame(1)">1 💎</button>
+                <button class="bet-chip plus-chip" onclick="customBet()">+</button>
             </div>
         </div>
 
-        <!-- صفحه دوم: خود بازی آرنا -->
-        <div id="arena-page" class="page">
+        <!-- ================= صفحه دوم: لیدربرد با تایمر ادمین و جوایز ================= -->
+        <div id="page-leaderboard" class="app-page">
             <header class="top-header">
-                <button class="back-btn" id="back-to-lobby">← Back</button>
-                <div class="brand-title">
-                    <span>⚔️</span> <strong>Arena Battle</strong>
-                </div>
+                <div class="brand-title"><span>👑</span> <strong>Leaderboard</strong></div>
+                <div class="timer-box" id="leaderboard-timer">Ends in: 07d 00h 00m</div>
             </header>
 
-            <div class="user-bar">
-                <div class="live-badge-box"><span class="dot"></span> LIVE</div>
-                <div class="balance-pill">
-                    <span>0</span> 💎
-                    <button class="plus-btn">+</button>
-                </div>
-                <button class="deposit-main-btn">Deposit</button>
+            <div class="leaderboard-info-box">
+                <p>Top players ranked by total winning volume. Prizes distribute automatically when timer ends!</p>
             </div>
 
-            <div class="bank-row">
-                <button class="icon-action-btn">🕒</button>
-                <div class="bank-display">Bank <span>0.0209</span> TON</div>
-                <button class="icon-action-btn">💬</button>
+            <div class="leaderboard-list" id="leaderboard-container">
+                <!-- رتبه‌ها به صورت پویا پر می‌شوند -->
             </div>
+        </div>
 
-            <div class="arena-card">
-                <div class="wheel-center-badge">
-                    <div>13</div>
-                </div>
-            </div>
-
-            <div class="players-section">
-                <div class="section-header">
-                    <h3>Players</h3>
-                    <span>Game #16128</span>
-                </div>
-                <div class="players-list">
-                    <div class="player-item">
-                        <div class="player-avatar">A</div>
-                        <div class="player-info">
-                            <span class="player-name">AMIRPROMAX 💔</span>
-                            <span class="player-chance">Chance 52.15%</span>
-                        </div>
-                        <div class="player-bet">💎 0.0109</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bet-controls-bar">
-                <button class="bet-chip">0.01 💎</button>
-                <button class="bet-chip">0.1 💎</button>
-                <button class="bet-chip">1 💎</button>
-                <button class="bet-chip plus-chip">+</button>
+        <!-- ================= صفحه سوم: پروفایل کاربر ================= -->
+        <div id="page-profile" class="app-page">
+            <header class="top-header">
+                <div class="brand-title"><span>👤</span> <strong>My Profile</strong></div>
+            </header>
+            <div class="profile-card">
+                <div class="profile-avatar">P</div>
+                <h3 id="profile-name">Player</h3>
+                <p>Total Wins Volume: <span id="profile-volume">0.00</span> TON</p>
             </div>
         </div>
 
         <!-- منوی پایین صفحه -->
         <nav class="bottom-nav">
-            <button class="nav-item active">
-                <span>🎮</span>
-                <span>Games</span>
+            <button class="nav-item active" onclick="switchPage('games', this)">
+                <span>⚔️</span>
+                <span>Arena</span>
             </button>
-            <button class="nav-item">
+            <button class="nav-item" onclick="switchPage('leaderboard', this)">
                 <span>👑</span>
                 <span>Leaderboard</span>
             </button>
-            <button class="nav-item">
+            <button class="nav-item" onclick="switchPage('profile', this)">
                 <span>👤</span>
                 <span>Profile</span>
             </button>
         </nav>
     </div>
 
-    <!-- کد جاوااسکریپت برای عوض شدن صفحه با کلیک -->
+    <!-- اسکریپت اتصال زنده و مدیریت بخش‌ها -->
     <script>
-        const lobbyPage = document.getElementById('lobby-page');
-        const arenaPage = document.getElementById('arena-page');
-        const openArenaBtn = document.getElementById('open-arena-btn');
-        const backToLobbyBtn = document.getElementById('back-to-lobby');
+        const socket = io();
+        let userBalance = 10.00; // موجودی تستی اولیه
+        let myTotalVolume = 0;
 
-        openArenaBtn.addEventListener('click', () => {
-            lobbyPage.classList.remove('active');
-            arenaPage.classList.add('active');
+        document.getElementById('user-balance').innerText = userBalance.toFixed(2);
+
+        // سوئیچ بین تب‌های پایین صفحه
+        function switchPage(pageName, btnElement) {
+            document.querySelectorAll('.app-page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+            document.getElementById('page-' + pageName).classList.add('active');
+            btnElement.classList.add('active');
+        }
+
+        // دریافت اطلاعات زنده از سرور
+        socket.on('state', (state) => {
+            document.getElementById('bank-amount').innerText = state.bank.toFixed(4);
+            document.getElementById('timer-display').innerText = state.timer;
+            document.getElementById('live-players-count').innerText = `LIVE (${state.players.length})`;
+
+            // وضعیت گردونه (روشن یا خاموش توسط ادمین)
+            const wheelCard = document.getElementById('wheel-card');
+            if (state.wheelEnabled) {
+                wheelCard.style.opacity = "1";
+                wheelCard.style.pointerEvents = "auto";
+                document.getElementById('wheel-status-text').innerText = state.wheelText || "Click to spin & win!";
+            } else {
+                wheelCard.style.opacity = "0.4";
+                wheelCard.style.pointerEvents = "none";
+                document.getElementById('wheel-status-text').innerText = "Wheel is currently disabled by Admin.";
+            }
+
+            // لیدربرد و تایمر ادمین
+            if (state.leaderboardTimerEnd) {
+                updateTimer(state.leaderboardTimerEnd);
+            }
+
+            // نمایش لیست بازیکنان واقعی در آرنا
+            let listHTML = '';
+            if (state.players.length === 0) {
+                listHTML = '<div class="no-players">No players in this round yet. Join below!</div>';
+            } else {
+                state.players.forEach(p => {
+                    let chance = ((p.amount / state.players.reduce((s, x) => s + x.amount, 0)) * 100).toFixed(1);
+                    listHTML += `
+                        <div class="player-item">
+                            <div class="player-avatar">${p.name.charAt(0)}</div>
+                            <div class="player-info">
+                                <span class="player-name">${p.name}</span>
+                                <span class="player-chance">Chance ${chance}%</span>
+                            </div>
+                            <div class="player-bet">💎 ${p.amount}</div>
+                        </div>
+                    `;
+                });
+            }
+            document.getElementById('players-list').innerHTML = listHTML;
+
+            // نمایش لیدربرد بر اساس حجم برد
+            let lbHTML = '';
+            if (state.leaderboard && state.leaderboard.length > 0) {
+                state.leaderboard.forEach((lb, index) => {
+                    lbHTML += `
+                        <div class="lb-item">
+                            <span class="lb-rank">#${index + 1}</span>
+                            <span class="lb-name">${lb.name}</span>
+                            <span class="lb-vol">${lb.volume.toFixed(2)} TON</span>
+                            <span class="lb-prize">🎁 ${lb.prize || 'Prize'}</span>
+                        </div>
+                    `;
+                });
+            } else {
+                lbHTML = '<div class="no-players">Leaderboard is empty or waiting for cycle end.</div>';
+            }
+            document.getElementById('leaderboard-container').innerHTML = lbHTML;
         });
 
-        backToLobbyBtn.addEventListener('click', () => {
-            arenaPage.classList.remove('active');
-            lobbyPage.classList.add('active');
-        });
+        // شرکت در بازی آرنا
+        function joinGame(amount) {
+            if (userBalance < amount) {
+                alert("Insufficient balance! Please deposit first.");
+                return;
+            }
+            userBalance -= amount;
+            document.getElementById('user-balance').innerText = userBalance.toFixed(2);
+
+            socket.emit('join_game', {
+                id: socket.id,
+                name: "User_" + Math.floor(Math.random() * 900 + 100),
+                amount: amount
+            });
+        }
+
+        function customBet() {
+            let custom = prompt("Enter custom amount (TON/Diamonds):", "0.05");
+            if (custom && !isNaN(custom)) {
+                joinGame(parseFloat(custom));
+            }
+        }
+
+        // عملکرد گردونه شانس
+        function spinWheel() {
+            let reward = Math.random() * 0.5; // جایزه تصادفی
+            userBalance += reward;
+            document.getElementById('user-balance').innerText = userBalance.toFixed(2);
+            alert(`Congratulations! You won ${reward.toFixed(2)} TON from the Free Spin!`);
+        }
+
+        function openDeposit() {
+            alert("Deposit gateway connected. Send TON to your deposit address.");
+        }
+
+        // محاسبه تایمر معکوس لیدربرد
+        function updateTimer(endTime) {
+            const now = new Date().getTime();
+            const distance = endTime - now;
+            if (distance < 0) {
+                document.getElementById('leaderboard-timer').innerText = "Cycle Ended! Prizes Distributed.";
+                return;
+            }
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            document.getElementById('leaderboard-timer').innerText = `Ends in: ${days}d ${hours}h ${minutes}m`;
+        }
     </script>
 </body>
 </html>
