@@ -12,45 +12,41 @@ app.use(express.static('public'));
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
-// 9173107929:AAG4CcOtg-8bT_4G_a4qJpN9LlJSrI7yBLg
-const TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN'; 
-const WEB_APP_URL = 'https://POKER.onrender.com'; // لینک سایت شما در رندر
+const TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN'; // 9173107929:AAG4CcOtg-8bT_4G_a4qJpN9LlJSrI7yBLg
+const WEB_APP_URL = 'https://POKER.onrender.com'; // https://poker-xqj6.onrender.com/
 
 const bot = new TelegramBot(TOKEN, { polling: true });
 
-// دستور Start و ارسال دکمه شیشه‌ای (Inline Keyboard)
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
-    const firstName = msg.from.first_name || 'User';
+    const firstName = msg.from.first_name || 'Warrior';
 
-    bot.sendMessage(chatId, `Welcome to POKER GIFT, ${firstName}!\n\nClick the button below to open the app and start playing:`, {
+    bot.sendMessage(chatId, `Welcome to ARENA, ${firstName}!\n\nTap the button below to enter the battleground:`, {
         reply_markup: {
             inline_keyboard: [
-                [{ text: '🚀 Launch POKER GIFT', web_app: { url: WEB_APP_URL } }]
+                [{ text: '⚔️ Enter Arena', web_app: { url: WEB_APP_URL } }]
             ]
         }
     });
 });
 
-// وضعیت بازی آرنا (بانک از صفر شروع می‌شود)
 let gameState = {
-    bank: 0.00,
+    bank: 0.0516,
+    playersCount: 16128,
     timer: 15,
     status: 'waiting',
     players: [],
-    wheelEnabled: true,
     leaderboard: [
         { name: "AMIRPROMAX", volume: 14.50, prize: "5 TON" },
         { name: "CryptoKing", volume: 9.20, prize: "3 TON" }
     ]
 };
 
-// تایمر بازی
 setInterval(() => {
     if (gameState.status === 'waiting' && gameState.players.length > 0) {
         gameState.timer--;
         if (gameState.timer <= 0) {
-            startSpinning();
+            startBattle();
         }
     } else if (gameState.players.length === 0) {
         gameState.timer = 15;
@@ -58,13 +54,13 @@ setInterval(() => {
     io.emit('state', gameState);
 }, 1000);
 
-function startSpinning() {
-    gameState.status = 'spinning';
+function startBattle() {
+    gameState.status = 'battling';
     io.emit('state', gameState);
 
     setTimeout(() => {
         let totalPool = gameState.bank;
-        let fee = totalPool * 0.05; // کسر ۵ درصد کمیسیون/مالیات ادمین
+        let fee = totalPool * 0.05; // ۵٪ کمیسیون
         let finalPrize = totalPool - fee;
 
         let winningPoint = Math.random() * totalPool;
@@ -89,7 +85,6 @@ function startSpinning() {
             gameState.leaderboard.sort((a, b) => b.volume - a.volume);
         }
 
-        // ریست شدن بانک برای دور بعدی
         gameState.bank = 0.00;
         gameState.players = [];
         gameState.status = 'waiting';
@@ -103,14 +98,14 @@ io.on('connection', (socket) => {
 
     socket.on('join_game', (data) => {
         if (gameState.status !== 'waiting') return;
-        
-        let betAmount = parseFloat(data.amount);
-        gameState.bank += betAmount; // اضافه شدن به بانک بازی
+        let bet = parseFloat(data.amount);
+        gameState.bank += bet;
+        gameState.playersCount++;
 
         gameState.players.push({
             id: socket.id,
-            name: data.name || "PLAYER",
-            amount: betAmount
+            name: data.name || "WARRIOR",
+            amount: bet
         });
 
         io.emit('state', gameState);
@@ -118,4 +113,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`Arena Server running on port ${PORT}`));
