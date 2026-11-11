@@ -3,185 +3,114 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POKER GIFT</title>
+    <title>ARENA - Battle Against Other Players</title>
     <link rel="stylesheet" href="/style.css">
     <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
     <div class="app-container">
 
-        <!-- صفحه ۱: منوی اصلی (Lobby) -->
-        <div id="lobby-page" class="app-page active">
-            <header class="top-header">
-                <button class="close-btn" onclick="window.close()">✕ Close</button>
-                <div class="brand-title">🚀 <strong>POKER GIFT</strong></div>
-            </header>
+        <!-- صفحه اصلی آرنا (دقیقاً مشابه عکس) -->
+        <div id="page-arena" class="app-page active">
+            <!-- هدر و تاج پادشاهی -->
+            <div class="arena-header-banner">
+                <div class="crown-icon">👑</div>
+                <div class="crossed-swords">⚔️</div>
+                <h1 class="arena-title">ARENA</h1>
+                <p class="arena-subtitle">BATTLE AGAINST OTHER PLAYERS</p>
+                <div class="red-glow-line"></div>
+            </div>
 
-            <div class="lobby-user-bar">
-                <div class="avatar-box">M</div>
-                <div class="balance-info">
-                    <span class="bal-title">Your balance</span>
-                    <span class="bal-amount"><span id="user-balance">10.00</span> 💎</span>
+            <!-- کارت حالت بازی (Arena Mode) -->
+            <div class="mode-card">
+                <div class="mode-icon">⚔️</div>
+                <div class="mode-info">
+                    <h3>Arena Mode</h3>
+                    <p>Compete in real-time battles and win rewards!</p>
                 </div>
-                <button class="deposit-btn-main" onclick="alert('Deposit gateway')">Deposit</button>
+                <div class="arrow-right">›</div>
             </div>
 
-            <div class="quick-chips">
-                <div class="chip-item">+0.0198</div>
-                <div class="chip-item">+0.232</div>
-                <div class="chip-item">+0.0261</div>
-                <div class="chip-item">+0.0297</div>
-            </div>
-
-            <div class="banner-card spin-banner" onclick="spinWheel()">
-                <div class="banner-text">
-                    <h3>Daily Free Spin</h3>
-                    <p>Next spin in 0h 24m 40s</p>
+            <!-- آمار بازیکنان و استخر جایزه (Players & Prize Pool) -->
+            <div class="stats-row">
+                <div class="stat-box">
+                    <div class="stat-label">👥 Players</div>
+                    <div class="stat-value" id="players-count-val">16128</div>
                 </div>
-                <div class="banner-icon">🎁</div>
+                <div class="stat-box">
+                    <div class="stat-label">🏆 Prize Pool</div>
+                    <div class="stat-value"><span id="prize-pool-val">0.0516</span> TON 💎</div>
+                </div>
             </div>
 
-            <div class="banner-card crash-banner">
-                <div class="live-tag">🟢 Live</div>
-                <div class="banner-text"><h3>Crash</h3><p>Cash out before explosion</p></div>
-                <div class="banner-badge">x2.36</div>
-            </div>
+            <!-- دکمه بزرگ و جذاب BATTLE -->
+            <button class="battle-btn" onclick="joinBattle(0.01)">
+                <span>⚔️ BATTLE &gt;&gt;</span>
+            </button>
 
-            <div class="banner-card arena-banner" onclick="openArena()">
-                <div class="live-tag">🟢 Live</div>
-                <div class="banner-text"><h3>Arena</h3><p>Battle against other players</p></div>
-                <div class="banner-icon">⚔️</div>
-            </div>
-
-            <div class="banner-card mines-banner">
-                <div class="new-tag">New</div>
-                <div class="banner-text"><h3>Mines</h3><p>Find prizes without mines</p></div>
-                <div class="banner-icon">💣</div>
+            <!-- وضعیت زنده راند فعلی -->
+            <div class="live-status-box">
+                <span id="battle-status-text">Ready for next round... (Timer: <span id="timer-val">15</span>s)</span>
             </div>
         </div>
 
-        <!-- صفحه ۲: اتاق بازی آرنا -->
-        <div id="arena-page" class="app-page">
-            <header class="top-header">
-                <button class="back-btn" onclick="closeArena()">← Back</button>
-                <div class="brand-title">🚀 <strong>POKER GIFT</strong></div>
-            </header>
-
-            <div class="arena-top-row">
-                <div class="live-pill">LIVE</div>
-                <div class="right-wallet">
-                    <span id="arena-user-balance">10.00</span> 💎
-                    <button class="plus-mini-btn" onclick="alert('Deposit')">+</button>
-                </div>
-            </div>
-
-            <div class="bank-display-box">
-                Bank <span id="bank-amount">0.00</span> TON
-            </div>
-
-            <div class="arena-card-box">
-                <div class="center-avatar-circle" id="center-active-avatar"><span>⚔️</span></div>
-                <div class="waiting-status-text" id="status-text">Waiting for players...</div>
-            </div>
-
-            <div class="players-section">
-                <div class="section-header">
-                    <h3>Players</h3>
-                    <span>Game #16217</span>
-                </div>
-                <div id="players-list" class="players-list">
-                    <div class="no-players">No players yet</div>
-                </div>
-            </div>
-
-            <div class="bet-controls-bar">
-                <button class="bet-chip" onclick="joinArena(0.01)">0.01 💎</button>
-                <button class="bet-chip" onclick="joinArena(0.1)">0.1 💎</button>
-                <button class="bet-chip" onclick="joinArena(1)">1 💎</button>
-                <button class="bet-chip plus-chip" onclick="customBetPrompt()">+</button>
-            </div>
-        </div>
-
-        <!-- صفحه ۳: لیدربرد -->
-        <div id="leaderboard-page" class="app-page">
+        <!-- صفحه لیدربرد -->
+        <div id="page-leaderboard" class="app-page">
             <header class="top-header"><div class="brand-title">👑 <strong>Leaderboard</strong></div></header>
             <div class="leaderboard-list" id="leaderboard-container"></div>
         </div>
 
-        <!-- صفحه ۴: پروفایل -->
-        <div id="profile-page" class="app-page">
+        <!-- صفحه پروفایل -->
+        <div id="page-profile" class="app-page">
             <header class="top-header"><div class="brand-title">👤 <strong>Profile</strong></div></header>
             <div class="profile-card">
-                <div class="profile-avatar">M</div>
-                <h3>MAMAD</h3>
-                <p>Total Wins Volume: <span id="profile-win-vol">0.00</span> TON</p>
+                <div class="profile-avatar">⚔️</div>
+                <h3>WARRIOR</h3>
+                <p>Total Wins Volume: <span id="profile-vol">0.00</span> TON</p>
             </div>
         </div>
 
-        <!-- منوی پایین -->
+        <!-- منوی پایین صفحه (مشابه عکس مرجع) -->
         <nav class="bottom-nav">
-            <button class="nav-item active" onclick="switchNav('lobby', this)"><span>🎮</span><span>Games</span></button>
-            <button class="nav-item" onclick="switchNav('leaderboard', this)"><span>👑</span><span>Leaderboard</span></button>
-            <button class="nav-item" onclick="switchNav('profile', this)"><span>👤</span><span>Profile</span></button>
+            <button class="nav-item" onclick="switchTab('games', this)">
+                <span>🎮</span>
+                <span>Games</span>
+            </button>
+            <button class="nav-item active" onclick="switchTab('arena', this)">
+                <span>👑</span>
+                <span>Arena</span>
+            </button>
+            <button class="nav-item" onclick="switchTab('profile', this)">
+                <span>👤</span>
+                <span>Profile</span>
+            </button>
         </nav>
     </div>
 
     <script>
         const socket = io();
         let myBalance = 10.00;
-        let myName = "MAMAD";
 
-        function switchNav(page, btn) {
+        function switchTab(tab, btn) {
             document.querySelectorAll('.app-page').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            if (page === 'lobby') document.getElementById('lobby-page').classList.add('active');
-            if (page === 'leaderboard') document.getElementById('leaderboard-page').classList.add('active');
-            if (page === 'profile') document.getElementById('profile-page').classList.add('active');
+
+            if (tab === 'arena') document.getElementById('page-arena').classList.add('active');
+            if (tab === 'games') document.getElementById('page-arena').classList.add('active'); // موقتاً روی آرناست
+            if (tab === 'profile') document.getElementById('page-profile').classList.add('active');
             btn.classList.add('active');
         }
 
-        function openArena() {
-            document.getElementById('lobby-page').classList.remove('active');
-            document.getElementById('arena-page').classList.add('active');
-        }
-
-        function closeArena() {
-            document.getElementById('arena-page').classList.remove('active');
-            document.getElementById('lobby-page').classList.add('active');
-        }
-
         socket.on('state', (state) => {
-            document.getElementById('bank-amount').innerText = state.bank.toFixed(2);
-            if (state.status === 'spinning') {
-                document.getElementById('status-text').innerText = "Spinning winner... 🎰";
-            } else {
-                document.getElementById('status-text').innerText = state.players.length > 0 ? `Starting in ${state.timer}s` : "Waiting for players...";
-            }
+            document.getElementById('prize-pool-val').innerText = state.bank.toFixed(4);
+            document.getElementById('players-count-val').innerText = state.playersCount;
+            document.getElementById('timer-val').innerText = state.timer;
 
-            let html = '';
-            if (state.players.length === 0) {
-                html = '<div class="no-players">No players in this round yet.</div>';
-                document.getElementById('center-active-avatar').innerHTML = '<span>⚔️</span>';
+            if (state.status === 'battling') {
+                document.getElementById('battle-status-text').innerText = "🔥 Battle in progress... Selecting winner!";
             } else {
-                let total = state.bank;
-                let lastPlayer = state.players[state.players.length - 1];
-                document.getElementById('center-active-avatar').innerHTML = `<div class="inner-av">${lastPlayer.name.charAt(0)}</div>`;
-
-                state.players.forEach(p => {
-                    let chance = total > 0 ? ((p.amount / total) * 100).toFixed(0) : 0;
-                    html += `
-                        <div class="player-item">
-                            <div class="player-avatar">${p.name.charAt(0)}</div>
-                            <div class="player-info">
-                                <span class="player-name">${p.name}</span>
-                                <span class="player-chance">Chance ${chance}%</span>
-                            </div>
-                            <div class="player-bet">💎 ${p.amount}</div>
-                        </div>
-                    `;
-                });
+                document.getElementById('battle-status-text').innerText = state.players.length > 0 ? `Players joined: ${state.players.length}. Starting in ${state.timer}s` : "Ready to battle. Tap BATTLE!";
             }
-            document.getElementById('players-list').innerHTML = html;
 
             let lbHtml = '';
             state.leaderboard.forEach((u, i) => {
@@ -197,25 +126,14 @@
             document.getElementById('leaderboard-container').innerHTML = lbHtml;
         });
 
-        function joinArena(amount) {
-            if (myBalance < amount) { alert("Low balance!"); return; }
+        function joinBattle(amount) {
+            if (myBalance < amount) {
+                alert("Insufficient balance!");
+                return;
+            }
             myBalance -= amount;
-            document.getElementById('user-balance').innerText = myBalance.toFixed(2);
-            document.getElementById('arena-user-balance').innerText = myBalance.toFixed(2);
-            socket.emit('join_game', { name: myName, amount: amount });
-        }
-
-        function customBetPrompt() {
-            let val = prompt("Enter bet amount:", "0.05");
-            if (val && !isNaN(val)) joinArena(parseFloat(val));
-        }
-
-        function spinWheel() {
-            let win = Math.random() * 0.2;
-            myBalance += win;
-            document.getElementById('user-balance').innerText = myBalance.toFixed(2);
-            document.getElementById('arena-user-balance').innerText = myBalance.toFixed(2);
-            alert(`You won ${win.toFixed(2)} TON from Daily Spin!`);
+            socket.emit('join_game', { name: "WARRIOR", amount: amount });
+            alert("Successfully entered the Arena battle!");
         }
     </script>
 </body>
