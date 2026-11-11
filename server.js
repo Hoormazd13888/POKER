@@ -11,6 +11,7 @@ app.use(express.static('public'));
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
+// تنظیمات سراسری و پنل ادمین فرضی پشت صحنه
 let gameState = {
   bank: 0.00,
   timer: 15,
@@ -18,9 +19,17 @@ let gameState = {
   players: [],
   history: [],
   feePercent: 2,
-  adminWallet: "UQD_YOUR_ADMIN_WALLET_ADDRESS_HERE"
+  wheelEnabled: true, // ادمین می‌تواند این را تغییر دهد
+  wheelText: "Spin daily for free crypto rewards!",
+  leaderboardTimerEnd: new Date().getTime() + (7 * 24 * 60 * 60 * 1000), // پیش‌فرض 7 روزه
+  leaderboard: [
+    { name: "AmirPro", volume: 14.50, prize: "5 TON" },
+    { name: "CryptoKing", volume: 9.20, prize: "3 TON" },
+    { name: "Sina_99", volume: 4.10, prize: "1 TON" }
+  ]
 };
 
+// تایمر اصلی بازی آرنا
 setInterval(() => {
   if (gameState.status === 'waiting') {
     if (gameState.players.length > 0) {
@@ -57,12 +66,15 @@ function startSpinning() {
     let finalPrize = totalPool - fee;
     
     if (winner) {
-      winner.balance = (winner.balance || 0) + finalPrize;
-      gameState.history.unshift({
-        gameId: Math.floor(Math.random() * 90000) + 10000,
-        winnerName: winner.name,
-        amount: finalPrize
-      });
+      // اضافه شدن حجم برد به لیدربرد کاربر
+      let existingUser = gameState.leaderboard.find(u => u.name === winner.name);
+      if (existingUser) {
+        existingUser.volume += finalPrize;
+      } else {
+        gameState.leaderboard.push({ name: winner.name, volume: finalPrize, prize: "Reward" });
+      }
+      // مرتب‌سازی لیدربرد بر اساس بیشترین حجم برد
+      gameState.leaderboard.sort((a, b) => b.volume - a.volume);
     }
 
     gameState.bank += fee;
@@ -79,11 +91,11 @@ io.on('connection', (socket) => {
   socket.on('join_game', (data) => {
     if (gameState.status !== 'waiting') return;
     gameState.players.push({
-      id: data.id,
+      id: socket.id,
       name: data.name,
-      amount: parseFloat(data.amount),
-      color: data.color
+      amount: parseFloat(data.amount)
     });
+    io.emit('state', gameState);
   });
 });
 
