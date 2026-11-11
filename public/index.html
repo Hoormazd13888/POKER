@@ -10,7 +10,7 @@
 <body>
     <div class="app-container">
 
-        <!-- صفحه اصلی آرنا (دقیقاً مشابه عکس) -->
+        <!-- صفحه اصلی آرنا (مطابق عکس مرجع) -->
         <div id="page-arena" class="app-page active">
             <!-- هدر و تاج پادشاهی -->
             <div class="arena-header-banner">
@@ -21,7 +21,7 @@
                 <div class="red-glow-line"></div>
             </div>
 
-            <!-- کارت حالت بازی (Arena Mode) -->
+            <!-- کارت حالت بازی -->
             <div class="mode-card">
                 <div class="mode-icon">⚔️</div>
                 <div class="mode-info">
@@ -31,19 +31,19 @@
                 <div class="arrow-right">›</div>
             </div>
 
-            <!-- آمار بازیکنان و استخر جایزه (Players & Prize Pool) -->
+            <!-- آمار بازیکنان و استخر جایزه -->
             <div class="stats-row">
                 <div class="stat-box">
                     <div class="stat-label">👥 Players</div>
-                    <div class="stat-value" id="players-count-val">16128</div>
+                    <div class="stat-value" id="players-count-val">0</div>
                 </div>
                 <div class="stat-box">
                     <div class="stat-label">🏆 Prize Pool</div>
-                    <div class="stat-value"><span id="prize-pool-val">0.0516</span> TON 💎</div>
+                    <div class="stat-value"><span id="prize-pool-val">0.0000</span> TON 💎</div>
                 </div>
             </div>
 
-            <!-- دکمه بزرگ و جذاب BATTLE -->
+            <!-- دکمه بزرگ و قرمز BATTLE -->
             <button class="battle-btn" onclick="joinBattle(0.01)">
                 <span>⚔️ BATTLE &gt;&gt;</span>
             </button>
@@ -70,7 +70,7 @@
             </div>
         </div>
 
-        <!-- منوی پایین صفحه (مشابه عکس مرجع) -->
+        <!-- منوی پایین صفحه -->
         <nav class="bottom-nav">
             <button class="nav-item" onclick="switchTab('games', this)">
                 <span>🎮</span>
@@ -95,15 +95,14 @@
             document.querySelectorAll('.app-page').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
 
-            if (tab === 'arena') document.getElementById('page-arena').classList.add('active');
-            if (tab === 'games') document.getElementById('page-arena').classList.add('active'); // موقتاً روی آرناست
+            if (tab === 'arena' || tab === 'games') document.getElementById('page-arena').classList.add('active');
             if (tab === 'profile') document.getElementById('page-profile').classList.add('active');
             btn.classList.add('active');
         }
 
         socket.on('state', (state) => {
             document.getElementById('prize-pool-val').innerText = state.bank.toFixed(4);
-            document.getElementById('players-count-val').innerText = state.playersCount;
+            document.getElementById('players-count-val').innerText = state.playersCount || state.players.length;
             document.getElementById('timer-val').innerText = state.timer;
 
             if (state.status === 'battling') {
@@ -113,16 +112,18 @@
             }
 
             let lbHtml = '';
-            state.leaderboard.forEach((u, i) => {
-                lbHtml += `
-                    <div class="lb-item">
-                        <span class="lb-rank">#${i+1}</span>
-                        <span class="lb-name">${u.name}</span>
-                        <span class="lb-vol">${u.volume.toFixed(2)} TON</span>
-                        <span class="lb-prize">🎁 ${u.prize}</span>
-                    </div>
-                `;
-            });
+            if(state.leaderboard) {
+                state.leaderboard.forEach((u, i) => {
+                    lbHtml += `
+                        <div class="lb-item">
+                            <span class="lb-rank">#${i+1}</span>
+                            <span class="lb-name">${u.name}</span>
+                            <span class="lb-vol">${u.volume.toFixed(2)} TON</span>
+                            <span class="lb-prize">🎁 ${u.prize}</span>
+                        </div>
+                    `;
+                });
+            }
             document.getElementById('leaderboard-container').innerHTML = lbHtml;
         });
 
@@ -133,7 +134,6 @@
             }
             myBalance -= amount;
             socket.emit('join_game', { name: "WARRIOR", amount: amount });
-            alert("Successfully entered the Arena battle!");
         }
     </script>
 </body>
