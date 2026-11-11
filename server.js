@@ -7,7 +7,7 @@ const PORT = process.env.PORT || 3000;
 app.get('/', (req, res) => res.send('Casino Mini App Bot is running!'));
 app.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
 
-// توکن ربات خود را از BotFather اینجا قرار دهید
+// توکن ربات خود را اینجا قرار دهید
 const TOKEN = '9173107929:AAG4CcOtg-8bT_4G_a4qJpN9LlJSrI7yBLg';
 const bot = new TelegramBot(TOKEN, { polling: true });
 
@@ -114,7 +114,6 @@ bot.on('callback_query', async (query) => {
 
         users[chatId].balance -= 200;
         
-        // شبیه‌سازی اسلات ماشین با ایموجی تاس/اقلام
         const emojis = ['🍇', '🍋', '🍊', '💎', '7️⃣'];
         const slot1 = emojis[Math.floor(Math.random() * emojis.length)];
         const slot2 = emojis[Math.floor(Math.random() * emojis.length)];
