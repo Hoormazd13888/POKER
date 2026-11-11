@@ -3,76 +3,133 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POKER GIFT - Arena</title>
+    <title>POKER GIFT</title>
     <link rel="stylesheet" href="/style.css">
-    <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
     <div class="app-container">
-        <!-- Top Header with Brand -->
-        <header class="top-header">
-            <button class="back-btn">← Back</button>
-            <div class="brand-title">
-                <span>🚀</span> <strong>POKER GIFT</strong>
-            </div>
-        </header>
+        
+        <!-- صفحه اول: منوی بازی‌ها (لابی) -->
+        <div id="lobby-page" class="page active">
+            <header class="top-header">
+                <button class="close-btn">✕ Close</button>
+                <div class="brand-title">
+                    <span>🚀</span> <strong>POKER GIFT</strong>
+                </div>
+            </header>
 
-        <!-- Balance & Status Bar -->
-        <div class="user-bar">
-            <div class="live-badge-box">
-                <span class="dot"></span> LIVE
+            <div class="lobby-user-bar">
+                <div class="avatar-box">👤</div>
+                <div class="balance-info">
+                    <span class="bal-title">Your balance</span>
+                    <span class="bal-amount">0 💎</span>
+                </div>
+                <button class="deposit-btn-main">Deposit</button>
             </div>
-            <div class="balance-pill">
-                <span id="user-balance">0</span> 💎
-                <button class="plus-btn">+</button>
+
+            <div class="quick-chips">
+                <div class="chip-item">+0.0198</div>
+                <div class="chip-item">+0.232</div>
+                <div class="chip-item">+0.0261</div>
+                <div class="chip-item">+0.0297</div>
             </div>
-            <button class="deposit-main-btn">Deposit</button>
+
+            <!-- دکمه روزانه -->
+            <div class="banner-card spin-banner">
+                <div class="banner-text">
+                    <h3>Daily Free Spin</h3>
+                    <p>Next spin in 0h 24m 40s</p>
+                </div>
+                <div class="banner-icon">🎁</div>
+            </div>
+
+            <!-- بازی کرش -->
+            <div class="banner-card crash-banner">
+                <div class="live-tag">🟢 Live</div>
+                <div class="banner-text">
+                    <h3>Crash</h3>
+                    <p>Cash out before the rocket explodes</p>
+                </div>
+                <div class="banner-badge">x2.36</div>
+            </div>
+
+            <!-- بازی آرنا (با کلیک روی این، وارد صفحه بازی می‌شوید) -->
+            <div class="banner-card arena-banner" id="open-arena-btn">
+                <div class="live-tag">🟢 Live</div>
+                <div class="banner-text">
+                    <h3>Arena</h3>
+                    <p>Battle against other players</p>
+                </div>
+                <div class="banner-icon">⚔️</div>
+            </div>
+
+            <!-- بازی مینز -->
+            <div class="banner-card mines-banner">
+                <div class="new-tag">New</div>
+                <div class="banner-text">
+                    <h3>Mines</h3>
+                    <p>Find the prizes without hitting a mine</p>
+                </div>
+                <div class="banner-icon">💣</div>
+            </div>
         </div>
 
-        <!-- Bank & History Row -->
-        <div class="bank-row">
-            <button class="icon-action-btn" id="history-btn">🕒</button>
-            <div class="bank-display">
-                Bank <span id="bank-amount">0.0209</span> TON
-            </div>
-            <button class="icon-action-btn" id="chat-btn">💬</button>
-        </div>
+        <!-- صفحه دوم: خود بازی آرنا -->
+        <div id="arena-page" class="page">
+            <header class="top-header">
+                <button class="back-btn" id="back-to-lobby">← Back</button>
+                <div class="brand-title">
+                    <span>⚔️</span> <strong>Arena Battle</strong>
+                </div>
+            </header>
 
-        <!-- Arena Wheel Card -->
-        <div class="arena-card">
-            <div class="wheel-center-badge">
-                <div id="timer-display">13</div>
+            <div class="user-bar">
+                <div class="live-badge-box"><span class="dot"></span> LIVE</div>
+                <div class="balance-pill">
+                    <span>0</span> 💎
+                    <button class="plus-btn">+</button>
+                </div>
+                <button class="deposit-main-btn">Deposit</button>
             </div>
-        </div>
 
-        <!-- Players Section Header -->
-        <div class="players-section">
-            <div class="section-header">
-                <h3>Players</h3>
-                <span id="game-id">Game #16128</span>
+            <div class="bank-row">
+                <button class="icon-action-btn">🕒</button>
+                <div class="bank-display">Bank <span>0.0209</span> TON</div>
+                <button class="icon-action-btn">💬</button>
             </div>
-            <div id="players-list" class="players-list">
-                <!-- Sample Player Item matching reference -->
-                <div class="player-item">
-                    <div class="player-avatar">A</div>
-                    <div class="player-info">
-                        <span class="player-name">AMIRPROMAX 💔</span>
-                        <span class="player-chance">Chance 52.15%</span>
-                    </div>
-                    <div class="player-bet">💎 0.0109</div>
+
+            <div class="arena-card">
+                <div class="wheel-center-badge">
+                    <div>13</div>
                 </div>
             </div>
+
+            <div class="players-section">
+                <div class="section-header">
+                    <h3>Players</h3>
+                    <span>Game #16128</span>
+                </div>
+                <div class="players-list">
+                    <div class="player-item">
+                        <div class="player-avatar">A</div>
+                        <div class="player-info">
+                            <span class="player-name">AMIRPROMAX 💔</span>
+                            <span class="player-chance">Chance 52.15%</span>
+                        </div>
+                        <div class="player-bet">💎 0.0109</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bet-controls-bar">
+                <button class="bet-chip">0.01 💎</button>
+                <button class="bet-chip">0.1 💎</button>
+                <button class="bet-chip">1 💎</button>
+                <button class="bet-chip plus-chip">+</button>
+            </div>
         </div>
 
-        <!-- Bottom Bet Controls -->
-        <div class="bet-controls-bar">
-            <button class="bet-chip">0.01 💎</button>
-            <button class="bet-chip">0.1 💎</button>
-            <button class="bet-chip">1 💎</button>
-            <button class="bet-chip plus-chip">+</button>
-        </div>
-
-        <!-- Bottom Navigation Bar -->
+        <!-- منوی پایین صفحه -->
         <nav class="bottom-nav">
             <button class="nav-item active">
                 <span>🎮</span>
@@ -88,5 +145,23 @@
             </button>
         </nav>
     </div>
+
+    <!-- کد جاوااسکریپت برای عوض شدن صفحه با کلیک -->
+    <script>
+        const lobbyPage = document.getElementById('lobby-page');
+        const arenaPage = document.getElementById('arena-page');
+        const openArenaBtn = document.getElementById('open-arena-btn');
+        const backToLobbyBtn = document.getElementById('back-to-lobby');
+
+        openArenaBtn.addEventListener('click', () => {
+            lobbyPage.classList.remove('active');
+            arenaPage.classList.add('active');
+        });
+
+        backToLobbyBtn.addEventListener('click', () => {
+            arenaPage.classList.remove('active');
+            lobbyPage.classList.add('active');
+        });
+    </script>
 </body>
 </html>
