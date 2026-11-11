@@ -4,59 +4,92 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.get('/', (req, res) => res.send('Starzify Bot is running online!'));
+app.get('/', (req, res) => res.send('Tel Shop Bot is running online!'));
 app.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
 
 // توکن جدید ربات شما
 const TOKEN = '8912298462:AAG6yIlAvRWRKkGG9eLLEkRCjK5wtHcoVmc';
 const bot = new TelegramBot(TOKEN, { polling: true });
 
-// تنظیمات ادمین و کانال‌ها (این مقادیر را با آیدی‌های خودتان تنظیم کنید)
-const ADMIN_ID = 123456789; // آیدی عددی تلگرام شما به عنوان ادمین
-const CHANNEL_REPORT = '@Starzify_Reports'; // کانال عمومی گزارشات خرید
-const CHANNEL_ADMIN_ORDERS = -1001234567890; // آیدی عددی کانال خصوصی ادمین‌ها برای بررسی سفارش‌ها
-const FORCE_CHANNEL = '@Starzify_Channel'; // کانال جوین اجباری
+// تنظیمات کانال‌ها
+const CHANNEL_REPORT = '@Tel_Shop26'; // کانال گزارشات خرید
+const CHANNEL_ADMIN_ORDERS = -1001234567890; // کانال بررسی سفارشات ادمین
+const FORCE_CHANNEL = '@Tel_Shop26'; // کانال جوین اجباری
 
-// کیف پول رسمی ادمین برای دریافت TON
+// کیف پول رسمی ادمین برای واریز TON
 const ADMIN_TON_WALLET = 'EQD...WalletAddressExample...'; 
 
-// دیتابیس موقت کاربران
-const users = {};
+// دیتابیس حافظه موقت
+const db = {
+    adminId: null, // اولین نفری که /admin بفرستد ادمین می‌شود
+    users: {},
+    products: {
+        stars: { name: '⭐ استارز تلگرام', pricePerUnit: 1500 }, // قیمت هر واحد به تومان
+        premium: { name: '💎 اشتراک پریمیوم', pricePerUnit: 350000 },
+        boost: { name: '🚀 بوست کانال', pricePerUnit: 120000 }
+    },
+    tonPriceToman: 350000 // قیمت لحظه‌ای هر تون به تومان (قابل تغییر توسط ادمین)
+};
 
-// تابع بررسی عضویت اجباری در کانال
+// وضعیت موقت کاربران برای دریافت مقدار یا لینک
+const userState = {};
+
+// تابع بررسی عضویت اجباری
 async function checkMembership(userId) {
     try {
         const chatMember = await bot.getChatMember(FORCE_CHANNEL, userId);
         return ['member', 'administrator', 'creator'].includes(chatMember.status);
     } catch (e) {
-        return true; // اگر ربات دسترسی چک کردن نداشت، موقتاً اجازه عبور می‌دهد
+        return true; 
     }
 }
 
-// منوی اصلی ربات با دکمه‌های ساختاریافته
-function getMainMenu() {
-    return {
-        reply_markup: {
-            inline_keyboard: [
-                [{ text: '🛒 خرید محصول', callback_data: 'buy_product' }],
-                [{ text: '➕ افزایش موجودی', callback_data: 'add_balance' }, { text: '👤 حساب کاربری', callback_data: 'profile' }],
-                [{ text: '👥 زیر مجموعه گیری', callback_data: 'referral' }],
-                [{ text: '📞 پشتیبانی', callback_data: 'support' }, { text: '📦 پیگیری سفارش', callback_data: 'track_order' }],
-                [{ text: '❤️ چطور میتوانم به شما اعتماد کنم', callback_data: 'trust' }]
-            ]
-        }
-    };
+// منوی اصلی با دکمه‌های رنگی فعال
+function getMainMenu(isUserAdmin) {
+    let keyboard = [
+        [{ text: '🟢 🛒 خرید محصول', callback_data: 'buy_product' }],
+        [{ text: '🔵 ➕ افزایش موجودی', callback_data: 'add_balance' }, { text: '🔵 👤 حساب کاربری', callback_data: 'profile' }],
+        [{ text: '🔵 👥 زیر مجموعه گیری', callback_data: 'referral' }],
+        [{ text: '🔵 📞 پشتیبانی', callback_data: 'support' }, { text: '🔵 📦 پیگیری سفارش', callback_data: 'track_order' }],
+        [{ text: '🔴 ❤️ چطور میتوانم به شما اعتماد کنم', callback_data: 'trust' }]
+    ];
+
+    if (isUserAdmin) {
+        keyboard.unshift([{ text: '⚙️ 👑 پنل مدیریت پیشرفته ادمین', callback_data: 'admin_panel' }]);
+    }
+
+    return { reply_markup: { inline_keyboard: keyboard } };
 }
+
+// دستور /admin برای تعیین اولین نفر به عنوان ادمین
+bot.onText(/\/admin/, (msg) => {
+    const chatId = msg.chat.id;
+    
+    if (!db.adminId) {
+        db.adminId = chatId;
+        bot.sendMessage(chatId, `🎉 تبریک! شما به عنوان **ادمین اصلی** ربات Tel Shop ثبت شدید.`, { parse_mode: 'Markdown', ...getMainMenu(true) });
+    } else if (db.adminId === chatId) {
+        bot.sendMessage(chatId, `⚙️ شما ادمین ربات هستید. پنل مدیریت:`, {
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '📊 آمار ربات', callback_data: 'admin_stats' }, { text: '💱 تنظیم قیمت تون', callback_data: 'admin_set_ton' }],
+                    [{ text: '🔙 بازگشت به منوی اصلی', callback_data: 'back_home' }]
+                ]
+            }
+        });
+    } else {
+        bot.sendMessage(chatId, `❌ شما دسترسی ادمین ندارید.`);
+    }
+});
 
 // دستور Start
 bot.onText(/\/start/, async (msg) => {
     const chatId = msg.chat.id;
     const name = msg.from.first_name || 'کاربر';
 
-    // بررسی جوین اجباری
     const isJoined = await checkMembership(chatId);
     if (!isJoined) {
-        bot.sendMessage(chatId, `⚠️ برای استفاده از ربات باید ابتدا در کانال زیر عضو شوید:`, {
+        bot.sendMessage(chatId, `⚠️ برای استفاده از ربات Tel Shop باید ابتدا در کانال زیر عضو شوید:`, {
             reply_markup: {
                 inline_keyboard: [
                     [{ text: '📢 عضویت در کانال', url: `https://t.me/${FORCE_CHANNEL.replace('@', '')}` }],
@@ -67,31 +100,29 @@ bot.onText(/\/start/, async (msg) => {
         return;
     }
 
-    if (!users[chatId]) {
-        users[chatId] = { balance: 0, discountBalance: 0, level: 'برنز', referrals: 0, card: 'ثبت نشده' };
+    if (!db.users[chatId]) {
+        db.users[chatId] = { balance: 0, discountBalance: 0, level: 'برنز', referrals: 0 };
     }
 
-    let welcomeText = `سلام ${name} عزیز به ربات Starzify خوش آمدید! 💎\n\nاز لیست زیر، گزینه مورد نظرتان را انتخاب کنید:`;
-    
-    let menu = getMainMenu();
-    if (chatId === ADMIN_ID) {
-        menu.reply_markup.inline_keyboard.unshift([{ text: '⚙️ پنل مدیریت ادمین', callback_data: 'admin_panel' }]);
-    }
-
-    bot.sendMessage(chatId, welcomeText, menu);
+    const isAdmin = (db.adminId === chatId);
+    bot.sendMessage(chatId, `سلام ${name} عزیز به ربات **Tel Shop** خوش آمدید! 💎\n\nاز لیست زیر، گزینه مورد نظرتان را انتخاب کنید:`, {
+        parse_mode: 'Markdown',
+        ...getMainMenu(isAdmin)
+    });
 });
 
-// مدیریت کلیک روی دکمه‌ها
+// مدیریت کامل کلیک دکمه‌ها
 bot.on('callback_query', async (query) => {
     const chatId = query.message.chat.id;
     const data = query.data;
-    const user = users[chatId] || { balance: 0, discountBalance: 0, level: 'برنز', referrals: 0, card: 'ثبت نشده' };
+    const user = db.users[chatId] || { balance: 0 };
+    const isAdmin = (db.adminId === chatId);
 
     if (data === 'check_join') {
         const isJoined = await checkMembership(chatId);
         if (isJoined) {
             bot.deleteMessage(chatId, query.message.message_id);
-            bot.sendMessage(chatId, `🎉 عضویت شما تایید شد! خوش آمدید.`, getMainMenu());
+            bot.sendMessage(chatId, `🎉 عضویت شما تایید شد! خوش آمدید.`, getMainMenu(isAdmin));
         } else {
             bot.answerCallbackQuery(query.id, { text: '❌ شما هنوز در کانال عضو نشده‌اید!', show_alert: true });
         }
@@ -99,79 +130,50 @@ bot.on('callback_query', async (query) => {
     }
 
     if (data === 'buy_product') {
-        bot.editMessageText('🛒 <b>وقتشه محصولتو انتخاب کنی !</b>\n\nاز لیست زیر، محصول مورد نظرت رو انتخاب کن:', {
+        bot.editMessageText('🛒 **وقتشه محصولتو انتخاب کنی !**\n\nمحصول مورد نظر رو انتخاب کن:', {
             chat_id: chatId,
             message_id: query.message.message_id,
-            parse_mode: 'HTML',
+            parse_mode: 'Markdown',
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: '📦 سفارش های اخیر من', callback_data: 'recent_orders' }],
-                    [{ text: '⭐ استارز', callback_data: 'cat_stars' }, { text: '💎 پریمیوم', callback_data: 'cat_premium' }],
-                    [{ text: '💳 خرید رمز ارز', callback_data: 'cat_crypto' }],
-                    [{ text: '🎁 گیفت استارزی', callback_data: 'cat_gift' }, { text: '🔄 ریاکشن استارزی', callback_data: 'cat_reaction' }],
-                    [{ text: '🚀 بوست تلگرام', callback_data: 'cat_boost' }],
-                    [{ text: '🔙 برگشت', callback_data: 'back_home' }]
+                    [{ text: '🟢 ⭐ خرید استارز (هر واحد ' + db.products.stars.pricePerUnit + ' تومان)', callback_data: 'buy_stars' }],
+                    [{ text: '🟢 💎 خرید پریمیوم', callback_data: 'buy_premium' }],
+                    [{ text: '🟢 🚀 خرید بوست', callback_data: 'buy_boost' }],
+                    [{ text: '🔴 🔙 برگشت', callback_data: 'back_home' }]
                 ]
             }
         });
-    } 
+    }
+    else if (data === 'buy_stars') {
+        userState[chatId] = { action: 'buying_stars', price: db.products.stars.pricePerUnit };
+        bot.sendMessage(chatId, `⭐ لطفاً **تعداد** استارز مورد نظر خود را به صورت عدد انگلیسی ارسال کنید (مثلا: 50):`, { parse_mode: 'Markdown' });
+    }
     else if (data === 'add_balance') {
-        bot.editMessageText('💎 <b>افزایش موجودی کیف پول</b>\n\nلطفاً یکی از روش‌های زیر را برای شارژ حساب انتخاب کنید:', {
+        bot.editMessageText('💎 **افزایش موجودی کیف پول**\n\nلطفاً روش پرداخت را انتخاب کنید:', {
             chat_id: chatId,
             message_id: query.message.message_id,
-            parse_mode: 'HTML',
+            parse_mode: 'Markdown',
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: '🔴 پرداخت با ارز دیجیتال (تون‌کوین)', callback_data: 'pay_crypto_ton' }],
-                    [{ text: '💳 پرداخت ریالی / درگاهی', callback_data: 'pay_rial' }],
-                    [{ text: '🔙 برگشت', callback_data: 'back_home' }]
+                    [{ text: '🔴 💎 پرداخت با ارز دیجیتال (Tonkeeper با محاسبه قیمت روز)', callback_data: 'pay_crypto_ton' }],
+                    [{ text: '🔵 💳 پرداخت کارت به کارت', callback_data: 'pay_card' }],
+                    [{ text: '🔴 🔙 برگشت', callback_data: 'back_home' }]
                 ]
             }
         });
     }
     else if (data === 'pay_crypto_ton') {
-        const amountTon = '1.5'; 
-        const nanoTon = Math.floor(parseFloat(amountTon) * 1000000000); 
-        const commentId = `User_${chatId}`; // کامنت خودکار حاوی آیدی عددی کاربر
-        const tonkeeperLink = `ton://transfer/${ADMIN_TON_WALLET}?amount=${nanoTon}&text=${encodeURIComponent(commentId)}`;
-
-        let cryptoText = `💎 <b>پرداخت آنی با ارز دیجیتال (Toncoin)</b>\n\n` +
-                         `• مقدار: <code>${amountTon} TON</code>\n` +
-                         `• آیدی کامنت اختصاصی شما: <code>${commentId}</code>\n\n` +
-                         `👇 برای واریز مستقیم از طریق اپلیکیشن **Tonkeeper** روی دکمه زیر کلیک کنید (کامنت به صورت خودکار درج می‌شود):`;
-
-        bot.editMessageText(cryptoText, {
-            chat_id: chatId,
-            message_id: query.message.message_id,
-            parse_mode: 'HTML',
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: '🚀 پرداخت مستقیم با Tonkeeper', url: tonkeeperLink }],
-                    [{ text: '🔍 بررسی خودکار تراکنش', callback_data: 'verify_tx' }],
-                    [{ text: '🔙 برگشت', callback_data: 'add_balance' }]
-                ]
-            }
-        });
+        userState[chatId] = { action: 'entering_ton_amount' };
+        bot.sendMessage(chatId, `💱 قیمت روز هر تن‌کوین: **${db.tonPriceToman.toLocaleString()} تومان**\n\nلطفاً مشخص کنید چه تعداد **TON** می‌خواهید واریز کنید تا معادل تومانی آن محاسبه شود (مثلا: 1.5):`, { parse_mode: 'Markdown' });
     }
     else if (data === 'verify_tx') {
-        const isTxFound = false; // شبیه‌سازی بررسی تراکنش
-
-        if (isTxFound) {
-            user.balance += 100000; 
-            bot.answerCallbackQuery(query.id, { text: '✅ واریز شما با موفقیت تایید و به حساب اضافه شد!', show_alert: true });
-            
-            bot.sendMessage(CHANNEL_REPORT, `📢 <b>گزارش #خرید_موفق</b>\n\n👤 خریدار: ******${chatId.toString().slice(-4)}\n💎 شارژ کیف پول با ارز دیجیتال\n💰 مبلغ: تایید شده\n🕒 ${new Date().toLocaleString('fa-IR')}`, { parse_mode: 'HTML' });
-        } else {
-            bot.answerCallbackQuery(query.id, { text: '⏳ تراکنش یافت نشد. درخواست شما برای بررسی دستی به ادمین ارسال شد.', show_alert: true });
-            
-            bot.sendMessage(CHANNEL_ADMIN_ORDERS, `🔔 <b>درخواست بررسی دستی تراکنش/شارژ جدید</b>\n\n👤 آیدی کاربر: <code>${chatId}</code>\n💬 کامنت ارسالی: <code>User_${chatId}</code>\n\nلطفاً حساب را بررسی و تایید کنید.`);
-        }
+        bot.answerCallbackQuery(query.id, { text: '⏳ تراکنش بررسی شد. درخواست تایید به ادمین ارسال گردید.', show_alert: true });
+        bot.sendMessage(CHANNEL_ADMIN_ORDERS, `🔔 **درخواست واریز ارزی جدید**\n\n👤 کاربر: <code>${chatId}</code>\n💬 برای بررسی به کیف پول ادمین مراجعه کنید.`);
     }
     else if (data === 'profile') {
-        let profileText = `👤 <b>حساب کاربری شما</b>\n\n` +
-                          `• نام : ${query.from.first_name}\n` +
-                          `• آیدی عددی : <code>${chatId}</code>\n` +
-                          `• موجودی فعلی: ${user.balance.toLocaleString()} تومان`;
+        let profileText = `👤 **حساب کاربری شما در Tel Shop**\n\n` +
+                          `• آیدی عددی: <code>${chatId}</code>\n` +
+                          `• موجودی کیف پول: **${user.balance.toLocaleString()} تومان**`;
 
         bot.editMessageText(profileText, {
             chat_id: chatId,
@@ -179,22 +181,114 @@ bot.on('callback_query', async (query) => {
             parse_mode: 'HTML',
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: '🔙 برگشت', callback_data: 'back_home' }]
+                    [{ text: '🔴 🔙 برگشت', callback_data: 'back_home' }]
                 ]
             }
         });
     }
-    else if (data === 'back_home') {
-        let menu = getMainMenu();
-        if (chatId === ADMIN_ID) {
-            menu.reply_markup.inline_keyboard.unshift([{ text: '⚙️ پنل مدیریت ادمین', callback_data: 'admin_panel' }]);
-        }
-        bot.editMessageText('منوی اصلی ربات:', {
+    else if (data === 'admin_panel' && isAdmin) {
+        bot.editMessageText('⚙️ **پنل مدیریت پیشرفته ادمین Tel Shop**', {
             chat_id: chatId,
             message_id: query.message.message_id,
-            reply_markup: menu.reply_markup
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '💱 تنظیم قیمت روز TON', callback_data: 'admin_set_ton' }],
+                    [{ text: '📊 آمار کل کاربران', callback_data: 'admin_stats' }],
+                    [{ text: '🔴 🔙 بازگشت', callback_data: 'back_home' }]
+                ]
+            }
+        });
+    }
+    else if (data === 'admin_stats' && isAdmin) {
+        const totalUsers = Object.keys(db.users).length;
+        bot.answerCallbackQuery(query.id, { text: `📊 تعداد کل کاربران ربات: ${totalUsers} نفر`, show_alert: true });
+        return;
+    }
+    else if (data === 'admin_set_ton' && isAdmin) {
+        userState[chatId] = { action: 'setting_ton_price' };
+        bot.sendMessage(chatId, `💱 قیمت فعلی هر TON مبلغ ${db.tonPriceToman} تومان است.\nلطفاً قیمت جدید (به تومان) را ارسال کنید:`);
+    }
+    else if (data === 'back_home') {
+        bot.editMessageText('منوی اصلی ربات Tel Shop:', {
+            chat_id: chatId,
+            message_id: query.message.message_id,
+            ...getMainMenu(isAdmin)
         });
     }
 
     bot.answerCallbackQuery(query.id);
+});
+
+// مدیریت پیام‌های متنی ارسالی کاربران (برای دریافت تعداد خرید یا مقدار TON)
+bot.on('message', (msg) => {
+    const chatId = msg.chat.id;
+    const text = msg.text;
+
+    if (!text || text.startsWith('/')) return;
+
+    if (userState[chatId]) {
+        const state = userState[chatId];
+
+        if (state.action === 'buying_stars') {
+            const count = parseInt(text);
+            if (isNaN(count) || count <= 0) {
+                bot.sendMessage(chatId, `❌ لطفاً یک عدد معتبر وارد کنید.`);
+                return;
+            }
+            const totalPrice = count * state.price;
+            delete userState[chatId];
+
+            bot.sendMessage(chatId, `🛒 **فاکتور نهایی خرید استارز**\n\n• تعداد: ${count}\n• مبلغ کل: **${totalPrice.toLocaleString()} تومان**`, {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '🟢 ✅ پرداخت از موجودی کیف پول', callback_data: 'pay_from_wallet' }],
+                        [{ text: '🔴 ❌ انصراف', callback_data: 'back_home' }]
+                    ]
+                }
+            });
+        }
+        else if (state.action === 'entering_ton_amount') {
+            const tonAmount = parseFloat(text);
+            if (isNaN(tonAmount) || tonAmount <= 0) {
+                bot.sendMessage(chatId, `❌ مقدار TON نامعتبر است.`);
+                return;
+            }
+            const totalToman = Math.floor(tonAmount * db.tonPriceToman);
+            delete userState[chatId];
+
+            // ساخت لینک تونکیپر
+            const nanoTon = Math.floor(tonAmount * 1000000000);
+            const commentId = `User_${chatId}`;
+            const tonkeeperLink = `ton://transfer/${ADMIN_TON_WALLET}?amount=${nanoTon}&text=${encodeURIComponent(commentId)}`;
+
+            let textResult = `💎 **محاسبه واریز ارزی**\n\n` +
+                             `• مقدار ارسالی: **${tonAmount} TON**\n` +
+                             `• قیمت روز: **${db.tonPriceToman.toLocaleString()} تومان**\n` +
+                             `• معادل شارژ کیف پول: **${totalToman.toLocaleString()} تومان**\n\n` +
+                             `👇 با کلیک روی دکمه زیر مستقیماً وارد **Tonkeeper** شوید (کامنت به صورت خودکار درج می‌شود):`;
+
+            bot.sendMessage(chatId, textResult, {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '🚀 پرداخت مستقیم با Tonkeeper', url: tonkeeperLink }],
+                        [{ text: '🔍 بررسی تراکنش و شارژ حساب', callback_data: 'verify_tx' }],
+                        [{ text: '🔴 🔙 بازگشت', callback_data: 'back_home' }]
+                    ]
+                }
+            });
+        }
+        else if (state.action === 'setting_ton_price' && db.adminId === chatId) {
+            const newPrice = parseInt(text);
+            if (!isNaN(newPrice) && newPrice > 0) {
+                db.tonPriceToman = newPrice;
+                delete userState[chatId];
+                bot.sendMessage(chatId, `✅ قیمت روز TON با موفقیت به ${newPrice.toLocaleString()} تومان تغییر یافت.`);
+            } else {
+                bot.sendMessage(chatId, `❌ مبلغ نامعتبر است.`);
+            }
+        }
+    }
 });
