@@ -95,7 +95,7 @@ body {
     border-radius: 12px;
 }
 
-/* منوی پایین مشابه عکس */
+/* منوی پایین */
 .bottom-nav {
     position: fixed; bottom: 0; left: 0; right: 0;
     background: #08080c;
@@ -111,7 +111,7 @@ body {
 }
 .nav-item.active { color: #ef4444; }
 
-/* صفحات دیگر */
+/* سایر بخش‌ها */
 .top-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
 .brand-title { font-size: 16px; font-weight: bold; }
 .lb-item { display: flex; align-items: center; background: #141622; border: 1px solid #1f2233; padding: 10px; border-radius: 12px; margin-bottom: 8px; gap: 10px; }
