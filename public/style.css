@@ -1,5 +1,5 @@
 body {
-    background-color: #0b0c10;
+    background-color: #050508;
     color: #ffffff;
     font-family: Arial, sans-serif;
     margin: 0;
@@ -11,72 +11,113 @@ body {
 .app-container {
     width: 100%;
     max-width: 420px;
-    padding: 12px;
+    padding: 15px;
     box-sizing: border-box;
-    padding-bottom: 80px;
+    padding-bottom: 90px;
 }
 .app-page { display: none; }
 .app-page.active { display: block; }
 
-.top-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.close-btn, .back-btn { background: #1f2233; color: #fff; border: none; padding: 6px 12px; border-radius: 12px; font-size: 12px; cursor: pointer; }
-.brand-title { font-size: 16px; font-weight: bold; display: flex; align-items: center; gap: 6px; }
+/* هدر حماسی آرنا */
+.arena-header-banner {
+    text-align: center;
+    padding: 20px 0;
+    position: relative;
+}
+.crown-icon { font-size: 32px; margin-bottom: -15px; filter: drop-shadow(0 0 10px gold); }
+.crossed-swords { font-size: 40px; margin-bottom: 5px; }
+.arena-title {
+    font-size: 36px;
+    font-weight: 900;
+    margin: 0;
+    background: linear-gradient(180deg, #ffffff 30%, #999999 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: 2px;
+}
+.arena-subtitle { font-size: 10px; color: #888; letter-spacing: 2px; margin-top: 5px; font-weight: bold; }
+.red-glow-line { width: 60px; height: 3px; background: #ef4444; margin: 15px auto 0 auto; box-shadow: 0 0 15px #ef4444; }
 
-.lobby-user-bar { background: #141622; border: 1px solid #1f2233; border-radius: 16px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-.avatar-box { width: 40px; height: 40px; background: #2a2e43; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 16px; font-weight: bold; }
-.balance-info { flex: 1; margin-left: 12px; display: flex; flex-direction: column; }
-.bal-title { font-size: 11px; color: #9ca3af; }
-.bal-amount { font-size: 15px; font-weight: bold; }
-.deposit-btn-main { background: linear-gradient(135deg, #7c3aed, #9333ea); color: white; border: none; padding: 8px 16px; border-radius: 14px; font-weight: bold; cursor: pointer; }
+/* کارت حالت بازی */
+.mode-card {
+    background: rgba(20, 15, 20, 0.8);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    border-radius: 18px;
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.15);
+}
+.mode-icon { font-size: 24px; background: rgba(239, 68, 68, 0.2); padding: 12px; border-radius: 12px; margin-right: 12px; }
+.mode-info { flex: 1; }
+.mode-info h3 { margin: 0 0 4px 0; font-size: 15px; }
+.mode-info p { margin: 0; font-size: 11px; color: #888; }
+.arrow-right { font-size: 20px; color: #888; }
 
-.quick-chips { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 15px; }
-.chip-item { background: #141622; border: 1px solid #1f2233; padding: 6px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; color: #60a5fa; white-space: nowrap; }
+/* آمار بازیکنان و استخر */
+.stats-row { display: flex; gap: 12px; margin-bottom: 25px; }
+.stat-box {
+    flex: 1;
+    background: rgba(20, 15, 20, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 15px;
+    text-align: center;
+}
+.stat-label { font-size: 11px; color: #888; margin-bottom: 6px; }
+.stat-value { font-size: 15px; font-weight: bold; color: #fff; }
 
-.banner-card { border-radius: 18px; padding: 16px; margin-bottom: 12px; position: relative; cursor: pointer; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
-.spin-banner { background: linear-gradient(135deg, #4f46e5, #3b82f6); }
-.crash-banner { background: linear-gradient(135deg, #3b82f6, #6366f1); }
-.arena-banner { background: linear-gradient(135deg, #ef4444, #f59e0b); }
-.mines-banner { background: linear-gradient(135deg, #10b981, #059669); }
-.banner-text h3 { margin: 0 0 4px 0; font-size: 17px; }
-.banner-text p { margin: 0; font-size: 11px; color: rgba(255,255,255,0.8); }
-.banner-icon { font-size: 28px; }
-.live-tag, .new-tag { position: absolute; top: 10px; left: 14px; background: rgba(0,0,0,0.3); padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: bold; }
-.banner-badge { background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 10px; font-size: 12px; font-weight: bold; }
+/* دکمه بزرگ BATTLE */
+.battle-btn {
+    width: 100%;
+    background: linear-gradient(135deg, #b91c1c, #ef4444, #7f1d1d);
+    border: 2px solid #f87171;
+    color: white;
+    padding: 18px;
+    border-radius: 20px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 0 30px rgba(239, 68, 68, 0.5);
+    letter-spacing: 1px;
+    transition: 0.2s;
+    margin-bottom: 15px;
+}
+.battle-btn:active { transform: scale(0.97); }
 
-.arena-top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.live-pill { background: rgba(0,255,0,0.2); color: #00ff66; padding: 4px 10px; border-radius: 15px; font-size: 11px; font-weight: bold; }
-.right-wallet { background: #161824; padding: 4px 10px; border-radius: 15px; font-weight: bold; font-size: 13px; display: flex; align-items: center; gap: 6px; }
-.plus-mini-btn { width: 20px; height: 20px; background: #2a2e43; color: white; border: none; border-radius: 50%; cursor: pointer; }
+.live-status-box {
+    text-align: center;
+    font-size: 11px;
+    color: #aaa;
+    background: rgba(255,255,255,0.03);
+    padding: 10px;
+    border-radius: 12px;
+}
 
-.bank-display-box { background: #161824; text-align: center; padding: 10px; border-radius: 14px; font-weight: bold; color: #fbbf24; border: 1px solid #2a2e43; margin-bottom: 12px; font-size: 15px; }
+/* منوی پایین مشابه عکس */
+.bottom-nav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: #08080c;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    display: flex; justify-content: space-around;
+    padding: 12px 0;
+    z-index: 100;
+}
+.nav-item {
+    background: none; border: none; color: #666;
+    display: flex; flex-direction: column; align-items: center;
+    font-size: 11px; gap: 4px; cursor: pointer;
+}
+.nav-item.active { color: #ef4444; }
 
-.arena-card-box { background: linear-gradient(135deg, #ef4444, #f59e0b); height: 210px; border-radius: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; margin-bottom: 12px; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.4); }
-.center-avatar-circle { width: 70px; height: 70px; background: #1a1d29; border: 3px solid #fff; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 24px; margin-bottom: 10px; overflow: hidden; }
-.inner-av { width: 100%; height: 100%; background: #7c3aed; display: flex; justify-content: center; align-items: center; font-weight: bold; }
-.waiting-status-text { background: rgba(0,0,0,0.4); padding: 5px 15px; border-radius: 15px; font-size: 12px; font-weight: bold; }
-
-.players-section { background: #12141c; border-radius: 16px; padding: 10px; border: 1px solid #1f2233; margin-bottom: 12px; }
-.section-header { display: flex; justify-content: space-between; font-size: 12px; color: #9ca3af; margin-bottom: 8px; }
-.no-players { font-size: 12px; color: #6b7280; text-align: center; padding: 10px; }
-.player-item { display: flex; align-items: center; background: #1a1d29; padding: 8px; border-radius: 12px; margin-bottom: 6px; }
-.player-avatar { width: 32px; height: 32px; background: #8b5cf6; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; margin-right: 8px; font-size: 12px; }
-.player-info { flex: 1; display: flex; flex-direction: column; }
-.player-name { font-size: 12px; font-weight: bold; }
-.player-chance { font-size: 10px; color: #9ca3af; }
-.player-bet { color: #fbbf24; font-weight: bold; font-size: 12px; }
-
-.bet-controls-bar { display: flex; gap: 6px; }
-.bet-chip { flex: 1; background: #161824; border: 1px solid #2a2e43; color: white; padding: 10px; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 13px; }
-.plus-chip { background: #2a2e43; }
-
+/* صفحات دیگر */
+.top-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+.brand-title { font-size: 16px; font-weight: bold; }
 .lb-item { display: flex; align-items: center; background: #141622; border: 1px solid #1f2233; padding: 10px; border-radius: 12px; margin-bottom: 8px; gap: 10px; }
 .lb-rank { font-weight: bold; color: #fbbf24; width: 25px; }
 .lb-name { flex: 1; font-weight: bold; font-size: 13px; }
 .lb-vol { color: #60a5fa; font-size: 12px; }
 .lb-prize { background: #2a2e43; padding: 4px 8px; border-radius: 8px; font-size: 11px; color: #34d399; }
-.profile-card { background: #141622; border: 1px solid #1f2233; border-radius: 16px; padding: 20px; text-align: center; }
-.profile-avatar { width: 60px; height: 60px; background: #7c3aed; border-radius: 50%; margin: 0 auto 10px auto; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: bold; }
-
-.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #0d0e15; border-top: 1px solid #1f2233; display: flex; justify-content: space-around; padding: 10px 0; z-index: 100; }
-.nav-item { background: none; border: none; color: #6b7280; display: flex; flex-direction: column; align-items: center; font-size: 11px; gap: 4px; cursor: pointer; }
-.nav-item.active { color: #a855f7; }
+.profile-card { background: #141622; border: 1px solid #1f2233; border-radius: 16px; padding: 25px; text-align: center; }
+.profile-avatar { width: 60px; height: 60px; background: #ef4444; border-radius: 50%; margin: 0 auto 10px auto; display: flex; align-items: center; justify-content: center; font-size: 24px; }
