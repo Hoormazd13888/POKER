@@ -1,14 +1,12 @@
 {
-  "name": "xz-gift-arena",
+  "name": "telegram-bot",
   "version": "1.0.0",
-  "description": "Telegram Arena Game Mini App",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "cors": "^2.8.5",
-    "socket.io": "^4.7.2"
+    "express": "^4.19.2",
+    "node-telegram-bot-api": "^0.65.1"
   }
 }
