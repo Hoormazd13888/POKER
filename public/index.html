@@ -3,45 +3,90 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>XZ Gift - Arena</title>
+    <title>POKER GIFT - Arena</title>
     <link rel="stylesheet" href="/style.css">
     <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
     <div class="app-container">
-        <header class="header">
-            <div class="live-badge">🟢 LIVE</div>
-            <div class="balance-box">
-                <span class="coin-icon">💎</span>
-                <span id="user-balance">0.00</span>
-                <button class="deposit-btn">Deposit</button>
+        <!-- Top Header with Brand -->
+        <header class="top-header">
+            <button class="back-btn">← بازگشت</button>
+            <div class="brand-title">
+                <span>🚀</span> <strong>POKER GIFT</strong>
             </div>
         </header>
 
-        <div class="bank-section">
-            <div class="bank-title">Bank <span id="bank-amount">0.00</span> TON</div>
+        <!-- Balance & Status Bar -->
+        <div class="user-bar">
+            <div class="live-badge-box">
+                <span class="dot"></span> LIVE
+            </div>
+            <div class="balance-pill">
+                <span id="user-balance">0</span> 💎
+                <button class="plus-btn">+</button>
+            </div>
+            <button class="deposit-main-btn">Deposit</button>
         </div>
 
+        <!-- Bank & History Row -->
+        <div class="bank-row">
+            <button class="icon-action-btn" id="history-btn">🕒</button>
+            <div class="bank-display">
+                Bank <span id="bank-amount">0.0209</span> TON
+            </div>
+            <button class="icon-action-btn" id="chat-btn">💬</button>
+        </div>
+
+        <!-- Arena Wheel Card -->
         <div class="arena-card">
-            <div id="arena-wheel" class="wheel-box">
-                <div id="timer-display" class="timer-badge">15</div>
+            <div class="wheel-center-badge">
+                <div id="timer-display">13</div>
             </div>
         </div>
 
+        <!-- Players Section Header -->
         <div class="players-section">
             <div class="section-header">
                 <h3>Players</h3>
                 <span id="game-id">Game #16128</span>
             </div>
-            <div id="players-list" class="players-list"></div>
+            <div id="players-list" class="players-list">
+                <!-- Sample Player Item matching reference -->
+                <div class="player-item">
+                    <div class="player-avatar">A</div>
+                    <div class="player-info">
+                        <span class="player-name">AMIRPROMAX 💔</span>
+                        <span class="player-chance">Chance 52.15%</span>
+                    </div>
+                    <div class="player-bet">💎 0.0109</div>
+                </div>
+            </div>
         </div>
 
-        <div class="bet-controls">
-            <button>0.01 💎</button>
-            <button>0.1 💎</button>
-            <button>1 💎</button>
-            <button class="custom-bet">+</button>
+        <!-- Bottom Bet Controls -->
+        <div class="bet-controls-bar">
+            <button class="bet-chip">0.01 💎</button>
+            <button class="bet-chip">0.1 💎</button>
+            <button class="bet-chip">1 💎</button>
+            <button class="bet-chip plus-chip">+</button>
         </div>
+
+        <!-- Bottom Navigation Bar -->
+        <nav class="bottom-nav">
+            <button class="nav-item active">
+                <span>🎮</span>
+                <span>Games</span>
+            </button>
+            <button class="nav-item">
+                <span>👑</span>
+                <span>Leaderboard</span>
+            </button>
+            <button class="nav-item">
+                <span>👤</span>
+                <span>Profile</span>
+            </button>
+        </nav>
     </div>
 </body>
 </html>
