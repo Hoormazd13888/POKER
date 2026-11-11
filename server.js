@@ -12,8 +12,9 @@ app.use(express.static('public'));
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
-const TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN'; // 9173107929:AAG4CcOtg-8bT_4G_a4qJpN9LlJSrI7yBLg
-const WEB_APP_URL = 'https://POKER.onrender.com'; // https://poker-xqj6.onrender.com/
+// 9173107929:AAG4CcOtg-8bT_4G_a4qJpN9LlJSrI7yBLg
+const TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN'; 
+const WEB_APP_URL = 'https://POKER.onrender.com'; 
 
 const bot = new TelegramBot(TOKEN, { polling: true });
 
@@ -60,7 +61,7 @@ function startBattle() {
 
     setTimeout(() => {
         let totalPool = gameState.bank;
-        let fee = totalPool * 0.05; // ۵٪ کمیسیون
+        let fee = totalPool * 0.05;
         let finalPrize = totalPool - fee;
 
         let winningPoint = Math.random() * totalPool;
