@@ -8,7 +8,7 @@ app.get('/', (req, res) => res.send('Starzify Bot is running online!'));
 app.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
 
 // توکن جدید ربات شما
-const TOKEN = '8912298462:AAGUsPDNR0rbrWygNN1B9c7mtHh5JhvPLBw';
+const TOKEN = '8912298462:AAG6yIlAvRWRKkGG9eLLEkRCjK5wtHcoVmc';
 const bot = new TelegramBot(TOKEN, { polling: true });
 
 // تنظیمات ادمین و کانال‌ها (این مقادیر را با آیدی‌های خودتان تنظیم کنید)
