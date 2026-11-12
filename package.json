@@ -1,7 +1,7 @@
 {
-  "name": "ton-arena-game",
-  "version": "1.0.0",
-  "description": "Multiplayer Toncoin Arena Roulette Mini-App",
+  "name": "ton-arena-roulette-bot",
+  "version": "3.0.0",
+  "description": "Telegram Mini-App Bot with Arena, Roulette, Wallet and Leaderboard",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -9,6 +9,7 @@
   "dependencies": {
     "express": "^4.18.2",
     "socket.io": "^4.7.4",
-    "cors": "^2.8.5"
+    "cors": "^2.8.5",
+    "node-telegram-bot-api": "^0.65.1"
   }
 }
