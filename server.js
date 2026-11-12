@@ -11,7 +11,6 @@ let adminId = null;
 let adminStates = {}; 
 let giveaways = {};   
 
-// تابع کمکی برای تبدیل اعداد فارسی به انگلیسی
 function convertPersianNumbersToEnglish(str) {
   if (!str) return '';
   const persianNumbers = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
@@ -46,16 +45,17 @@ function sendAdminMenu(chatId) {
   });
 }
 
+// مدیریت کلیک روی دکمه‌های شیشه‌ای (کاملاً ایمن و اصلاح‌شده)
 bot.on('callback_query', (query) => {
   const chatId = query.message.chat.id;
   const userId = query.from.id;
   const data = query.data;
 
-  if (data === 'start_giveaway') {
-    if (userId !== adminId) {
-      return bot.answerCallbackQuery(query.id, { text: 'شما ادمین نیستید!', show_alert: true });
-    }
+  if (userId !== adminId) {
+    return bot.answerCallbackQuery(query.id, { text: 'شما ادمین نیستید!', show_alert: true });
+  }
 
+  if (data === 'start_giveaway') {
     adminStates[chatId] = {
       step: 'BANNER_PHOTO',
       data: { participants: [], ticketsBought: 0 }
@@ -68,13 +68,12 @@ bot.on('callback_query', (query) => {
     });
     bot.answerCallbackQuery(query.id);
   } else if (data === 'cancel_gw') {
-    if (userId !== adminId) return;
     delete adminStates[chatId];
     bot.sendMessage(chatId, `❌ عملیات لغو شد.`);
     sendAdminMenu(chatId);
     bot.answerCallbackQuery(query.id);
   } else if (data === 'type_free') {
-    if (userId !== adminId || !adminStates[chatId]) return;
+    if (!adminStates[chatId]) return;
     adminStates[chatId].data.type = 'FREE';
     adminStates[chatId].step = 'TIME';
     bot.sendMessage(chatId, `⏰ مدت زمان قرعه‌کشی به **دقیقه** را وارد کنید (مثلاً: 60):`, {
@@ -83,7 +82,7 @@ bot.on('callback_query', (query) => {
     });
     bot.answerCallbackQuery(query.id);
   } else if (data === 'type_ticket') {
-    if (userId !== adminId || !adminStates[chatId]) return;
+    if (!adminStates[chatId]) return;
     adminStates[chatId].data.type = 'TICKET';
     adminStates[chatId].step = 'TICKET_DETAILS';
     bot.sendMessage(chatId, `🎫 قیمت هر تیکت و تعداد کل تیکت‌ها را با فاصله بفرستید:\nمثال: \`5 3\` (یعنی ۵ استارز و ۳ تیکت کل)`, {
@@ -105,7 +104,7 @@ bot.on('callback_query', (query) => {
   }
 });
 
-// مدیریت جامع پیام‌ها و عکس‌ها بدون تداخل
+// مدیریت پیام‌ها و عکس‌ها برای ادمین
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
@@ -173,6 +172,26 @@ bot.on('message', async (msg) => {
         });
       } else {
         bot.sendMessage(chatId, `⚠️ لطفاً یک عدد معتبر برای تعداد برندگان وارد کنید.`);
+      }
+      break;
+
+    case 'TYPE':
+      if (cleanText === '1' || cleanText.includes('رایگان')) {
+        state.data.type = 'FREE';
+        state.step = 'TIME';
+        bot.sendMessage(chatId, `⏰ مدت زمان قرعه‌کشی به **دقیقه** را وارد کنید (مثلاً: 60):`, {
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
+        });
+      } else if (cleanText === '2' || cleanText.includes('تیکت')) {
+        state.data.type = 'TICKET';
+        state.step = 'TICKET_DETAILS';
+        bot.sendMessage(chatId, `🎫 قیمت هر تیکت و تعداد کل تیکت‌ها را با فاصله بفرستید:\nمثال: \`5 3\` (یعنی ۵ استارز و ۳ تیکت کل)`, {
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
+        });
+      } else {
+        bot.sendMessage(chatId, `⚠️ لطفاً روی یکی از دکمه‌های بالا کلیک کنید.`);
       }
       break;
 
