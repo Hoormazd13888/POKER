@@ -36,59 +36,47 @@
         .nav-icon { font-size: 20px; display: block; margin-bottom: 2px; }
 
         .list-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px; }
-        input { width: 100%; padding: 10px; background: #09090b; color: #fff; border: 1px solid #444; border-radius: 8px; margin-bottom: 8px; font-size: 13px; }
+        input, select { width: 100%; padding: 10px; background: #09090b; color: #fff; border: 1px solid #444; border-radius: 8px; margin-bottom: 8px; font-size: 13px; }
     </style>
 </head>
 <body>
 
     <div class="header">
         <div class="logo">♠️ POKER GIFT</div>
-        <div class="balance-badge">💎 <span id="user-balance">0.00</span> TON</div>
+        <div class="balance-badge"><span id="user-balance">0.00</span> 💎</div>
     </div>
 
     <div class="container">
-        <!-- بخش بازی‌ها -->
+        <!-- بازی‌ها -->
         <div id="sec-games" class="section active">
             <div class="arena-banner" onclick="openArenaModal()">
                 <h2>⚔️ Arena</h2>
                 <p style="font-size:13px; opacity:0.9;">Battle against other players in real-time</p>
             </div>
-            
             <div class="card">
                 <div class="card-title">🏆 مسابقات و لیگ‌های فعال</div>
                 <div id="tournaments-container"><p style="font-size:12px; color:var(--text-muted);">هیچ مسابقه‌ای فعال نیست.</p></div>
             </div>
         </div>
 
-        <!-- بخش لیدربرد -->
+        <!-- لیدربرد -->
         <div id="sec-leaderboard" class="section">
             <div class="card">
-                <div class="card-title">🏅 جدول رتبه‌بندی برترین‌ها (Leaderboard)</div>
+                <div class="card-title">🏅 جدول رتبه‌بندی برترین‌ها</div>
                 <div id="leaderboard-list"></div>
             </div>
         </div>
 
-        <!-- بخش تسک‌ها و بونوس -->
+        <!-- مأموریت و بونوس -->
         <div id="sec-missions" class="section">
-            <div id="daily-card" class="card" style="display:none;">
-                <div class="card-title">🎯 پاداش روزانه</div>
-                <div class="list-row">
-                    <span id="daily-text">دریافت پاداش امروز</span>
-                    <button class="btn btn-gold" style="width:auto; padding:6px 12px;" onclick="claimDaily()">دریافت</button>
-                </div>
-            </div>
             <div class="card">
                 <div class="card-title">🎁 فعال‌سازی بونوس / گیفت‌کد</div>
                 <input type="text" id="bonus-code-input" placeholder="کد بونوس را وارد کنید">
                 <button class="btn btn-purple" onclick="claimBonus()">بررسی و دریافت</button>
             </div>
-            <div class="card">
-                <div class="card-title">📌 تسک‌های فعال</div>
-                <div id="tasks-container"><p style="font-size:12px; color:var(--text-muted);">تسکی وجود ندارد.</p></div>
-            </div>
         </div>
 
-        <!-- بخش پروفایل و کیف پول -->
+        <!-- پروفایل و برداشت -->
         <div id="sec-profile" class="section">
             <div class="card">
                 <div class="card-title">💎 کیف پول شبکه TON و برداشت</div>
@@ -107,33 +95,21 @@
             </div>
         </div>
 
-        <!-- پنل مدیریت ادمین -->
+        <!-- پنل ادمین (فقط برای مدیر) -->
         <div id="sec-admin" class="section">
             <div class="card">
-                <div class="card-title">⚙️ تنظیمات مالی و بازی آرنا</div>
+                <div class="card-title">⚙️ مدیریت مالی و بازی آرنا</div>
                 <label style="font-size:12px;">درصد مالیات بازی:</label>
-                <input type="number" id="adm-fee" placeholder="مثلا 5">
-                <label style="font-size:12px;">پاداش روزانه (فعال/غیرفعال):</label>
-                <select id="adm-daily-active" style="width:100%; padding:10px; background:#09090b; color:#fff; border:1px solid #444; border-radius:8px; margin-bottom:8px;">
-                    <option value="true">فعال</option>
-                    <option value="false">غیرفعال</option>
-                </select>
-                <input type="number" id="adm-daily-amount" placeholder="مقدار الماس پاداش روزانه">
+                <input type="number" id="adm-fee">
                 <button class="btn btn-gold" onclick="saveSettings()">ذخیره تنظیمات</button>
             </div>
             <div class="card">
-                <div class="card-title">🎁 ساخت بونوس / گیفت‌کد جدید</div>
-                <input type="text" id="adm-bonus-code" placeholder="کد (مثلا GIFT2026)">
+                <div class="card-title">🎁 ساخت بونوس / گیفت‌کد</div>
+                <input type="text" id="adm-bonus-code" placeholder="کد بونوس">
                 <input type="number" id="adm-bonus-amount" placeholder="مقدار 💎">
-                <input type="number" id="adm-bonus-uses" placeholder="تعداد دفعات استفاده مجاز">
-                <button class="btn btn-purple" onclick="createBonus()">ساخت و دریافت لینک</button>
-                <div id="adm-bonus-result" style="font-size:11px; color:var(--gold); margin-top:8px;"></div>
-            </div>
-            <div class="card">
-                <div class="card-title">📌 افزودن تسک جدید</div>
-                <input type="text" id="adm-task-title" placeholder="عنوان تسک">
-                <input type="number" id="adm-task-reward" placeholder="پاداش 💎">
-                <button class="btn btn-gold" onclick="addTask()">ثبت تسک</button>
+                <input type="number" id="adm-bonus-uses" placeholder="تعداد دفعات استفاده">
+                <button class="btn btn-purple" onclick="createBonus()">ساخت لینک</button>
+                <div id="adm-bonus-result" style="font-size:11px; color:var(--gold); margin-top:6px;"></div>
             </div>
         </div>
     </div>
@@ -190,41 +166,21 @@
                 <div class="list-row"><span>#${i+1} ${l.name}</span><strong style="color:var(--gold);">${l.balance.toFixed(2)} 💎</strong></div>
             `).join('');
 
-            if (data.dailyBonus) {
-                document.getElementById('daily-card').style.display = 'block';
-                document.getElementById('daily-text').innerText = `دریافت پاداش روزانه (${data.dailyBonus} 💎)`;
-            }
-
-            if (data.tasks.length > 0) {
-                document.getElementById('tasks-container').innerHTML = data.tasks.map(t => `
-                    <div class="list-row"><span>${t.title} (+${t.reward} 💎)</span><button class="btn btn-gold" style="width:auto; padding:6px 12px;">انجام</button></div>
-                `).join('');
-            }
+            document.getElementById('history-list').innerHTML = currentUser.history.length ? currentUser.history.map(h => `<div style="padding:4px 0;">• ${h}</div>`).join('') : 'تراکنشی ثبت نشده است.';
 
             if (data.isAdmin) {
                 document.getElementById('nav-admin').style.display = 'block';
-                loadAdminPanel();
+                const admRes = await fetch('/api/admin/data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adminId: tgUser.id }) });
+                const admData = await admRes.json();
+                document.getElementById('adm-fee').value = admData.settings.feePercent;
             }
-        }
-
-        async function loadAdminPanel() {
-            const res = await fetch('/api/admin/data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adminId: tgUser.id }) });
-            const data = await res.json();
-            document.getElementById('adm-fee').value = data.settings.feePercent;
-            document.getElementById('adm-daily-active').value = data.settings.dailyBonusActive;
-            document.getElementById('adm-daily-amount').value = data.settings.dailyBonusAmount;
         }
 
         async function saveSettings() {
             await fetch('/api/admin/update-settings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    adminId: tgUser.id,
-                    feePercent: document.getElementById('adm-fee').value,
-                    dailyActive: document.getElementById('adm-daily-active').value === 'true',
-                    dailyAmount: document.getElementById('adm-daily-amount').value
-                })
+                body: JSON.stringify({ adminId: tgUser.id, feePercent: document.getElementById('adm-fee').value })
             });
             alert('تنظیمات ذخیره شد.');
         }
@@ -239,21 +195,14 @@
                 body: JSON.stringify({ adminId: tgUser.id, code, amount, maxUses })
             });
             const data = await res.json();
-            document.getElementById('adm-bonus-result').innerText = `لینک بونوس:\n${data.link}`;
+            document.getElementById('adm-bonus-result').innerText = `لینک: ${data.link}`;
         }
 
         async function claimBonus() {
             const code = document.getElementById('bonus-code-input').value;
             const res = await fetch('/api/bonus/claim', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tgUser.id, code }) });
             const data = await res.json();
-            if (data.error) alert(data.error); else { alert('بونوس با موفقیت دریافت شد!'); syncData(); }
-        }
-
-        async function addTask() {
-            const title = document.getElementById('adm-task-title').value;
-            const reward = document.getElementById('adm-task-reward').value;
-            await fetch('/api/admin/add-task', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adminId: tgUser.id, title, reward }) });
-            alert('تسک افزوده شد.');
+            if (data.error) alert(data.error); else { alert('بونوس دریافت شد!'); syncData(); }
         }
 
         async function requestWithdrawal() {
