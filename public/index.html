@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>POKER GIFT</title>
+    <title>NFT SNIPER BOT</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet">
     <style>
@@ -13,196 +13,58 @@
             --gold: #f59e0b;
             --purple: #9333ea;
             --blue: #38bdf8;
-            --red: #f43f5e;
+            --green: #10b981;
             --text-main: #ffffff;
             --text-muted: #94a3b8;
         }
 
         * { box-sizing: border-box; font-family: 'Vazirmatn', sans-serif; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
-        body { background-color: var(--bg-deep); background-image: radial-gradient(circle at 50% -15%, #3b0764 0%, var(--bg-deep) 65%); color: var(--text-main); padding-bottom: 95px; min-height: 100vh; overflow-x: hidden; }
+        body { background-color: var(--bg-deep); background-image: radial-gradient(circle at 50% -15%, #1e1b4b 0%, var(--bg-deep) 65%); color: var(--text-main); padding: 16px; min-height: 100vh; }
 
-        .header { background: rgba(12, 12, 18, 0.95); backdrop-filter: blur(20px); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); position: sticky; top: 0; z-index: 50; }
-        .logo { font-size: 17px; font-weight: 900; background: linear-gradient(135deg, #fff, var(--blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .balance-badge { background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.4); color: var(--blue); padding: 6px 14px; border-radius: 25px; font-weight: 800; font-size: 12px; display: flex; align-items: center; gap: 5px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .logo { font-size: 18px; font-weight: 900; background: linear-gradient(135deg, #fff, var(--blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .status-badge { background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); color: var(--green); padding: 5px 12px; border-radius: 20px; font-weight: 800; font-size: 11px; display: flex; align-items: center; gap: 6px; }
+        .dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%; box-shadow: 0 0 8px var(--green); }
 
-        .container { padding: 14px; }
-        
-        /* اصلاح مهم برای نمایش درست تب‌ها */
-        .section { display: none !important; }
-        .section.active { display: block !important; }
-
-        .card { background: var(--card-bg); border: 1px solid rgba(147, 51, 234, 0.3); border-radius: 20px; padding: 16px; margin-bottom: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .card { background: var(--card-bg); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 20px; padding: 18px; margin-bottom: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         .card-title { font-size: 14px; font-weight: 800; color: var(--gold); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
 
         .btn { width: 100%; padding: 12px; border: none; border-radius: 14px; font-weight: 800; font-size: 13px; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px; transition: 0.15s; }
         .btn:active { transform: scale(0.96); }
-        .btn-gold { background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; }
-        .btn-purple { background: linear-gradient(135deg, #9333ea, #6b21a8); color: #fff; }
         .btn-blue { background: linear-gradient(135deg, #38bdf8, #0284c7); color: #000; }
-        .btn-red { background: linear-gradient(135deg, #f43f5e, #be123c); color: #fff; }
-
-        .arena-card {
-            background: linear-gradient(135deg, #e11d48 0%, #7e22ce 50%, #2563eb 100%);
-            border-radius: 24px; padding: 22px; color: #fff; cursor: pointer;
-            box-shadow: 0 12px 35px rgba(225, 29, 72, 0.4); margin-bottom: 16px;
-            border: 1px solid rgba(255,255,255,0.25); display: flex; justify-content: space-between; align-items: center;
-        }
-        .arena-card-left h2 { font-size: 26px; font-weight: 900; letter-spacing: 1px; margin: 4px 0; }
-        .live-pill { background: rgba(0,0,0,0.4); padding: 4px 10px; border-radius: 20px; font-size: 10px; font-weight: 900; display: inline-flex; align-items: center; gap: 5px; border: 1px solid rgba(255,255,255,0.2); }
-        .live-dot { width: 7px; height: 7px; background: #22c55e; border-radius: 50%; box-shadow: 0 0 8px #22c55e; }
-        .arena-graphic { width: 70px; height: 70px; background: rgba(255,255,255,0.15); border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: 35px; backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.3); transform: rotate(-6deg); }
-
-        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(12, 12, 18, 0.98); backdrop-filter: blur(25px); border-top: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-around; padding: 10px 4px; z-index: 100; }
-        .nav-item { color: var(--text-muted); font-size: 11px; font-weight: 700; text-align: center; cursor: pointer; flex: 1; }
-        .nav-item.active { color: var(--blue); text-shadow: 0 0 10px rgba(56,189,248,0.4); }
-        .nav-icon { font-size: 20px; display: block; margin-bottom: 3px; }
 
         .list-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px; }
         .list-row:last-child { border-bottom: none; }
-        input, select { width: 100%; padding: 12px; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; margin-bottom: 10px; font-size: 13px; outline: none; }
+        input { width: 100%; padding: 12px; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; margin-bottom: 10px; font-size: 13px; outline: none; }
         label { font-size: 11px; font-weight: 800; color: var(--text-muted); display: block; margin-bottom: 5px; }
-
-        #arena-modal { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:#07070b; z-index:200; padding:16px; overflow-y:auto; }
-        .wheel-box { width: 180px; height: 180px; margin: 15px auto; border-radius: 50%; background: conic-gradient(#38bdf8 0deg 90deg, #9333ea 90deg 180deg, #f43f5e 180deg 270deg, #f59e0b 270deg 360deg); display: flex; align-items: center; justify-content: center; position: relative; box-shadow: 0 0 40px rgba(147,51,234,0.45); border: 4px solid rgba(255,255,255,0.3); }
-        .wheel-pointer { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-top: 16px solid #fff; z-index: 10; }
-        .wheel-center { width: 110px; height: 110px; background: #0c0c14; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 900; color: var(--gold); box-shadow: inset 0 4px 15px rgba(0,0,0,0.9); }
-        @keyframes spinWheel { from { transform: rotate(0deg); } to { transform: rotate(1800deg); } }
-        .spinning { animation: spinWheel 4s cubic-bezier(0.15, 0.9, 0.2, 1) forwards; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <div class="logo">♠️ POKER GIFT</div>
-        <div class="balance-badge">💎 <span id="user-balance">5.00</span> TON</div>
+        <div class="logo">🎯 NFT & GIFT SNIPER</div>
+        <div class="status-badge"><span class="dot"></span> ربات فعال و آنلاین</div>
     </div>
 
-    <div class="container">
-        <!-- تب بازی‌ها -->
-        <div id="sec-games" class="section active">
-            <div class="arena-card" onclick="openArenaModal()">
-                <div class="arena-card-left">
-                    <div class="live-pill"><span class="live-dot"></span> PvP LIVE • <span id="waiting-count">1</span> منتظر</div>
-                    <h2>ARENA</h2>
-                    <p style="font-size:12px; opacity:0.9;">رقابت زنده، چرخش گردونه و برنده کل استخر</p>
-                </div>
-                <div class="arena-graphic">⚔️</div>
-            </div>
-            
-            <div class="card">
-                <div class="card-title">🏆 مسابقات و لیگ‌های فعال</div>
-                <div id="tournaments-container">
-                    <div class="list-row"><div><strong>لیگ بزرگ هفتگی پوکر</strong><div style="color:var(--gold);">جایزه: 50 TON</div></div><span style="color:#22c55e; font-weight:800;">فعال</span></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- تب لیدربرد -->
-        <div id="sec-leaderboard" class="section">
-            <div class="card">
-                <div class="card-title">🏅 جدول رتبه‌بندی برترین‌ها</div>
-                <div id="leaderboard-list">
-                    <div class="list-row"><span>#1 هرمزد</span><strong style="color:var(--gold);">25.40 💎</strong></div>
-                    <div class="list-row"><span>#2 آرشام</span><strong style="color:var(--gold);">18.20 💎</strong></div>
-                    <div class="list-row"><span>#3 کوروش</span><strong style="color:var(--gold);">12.00 💎</strong></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- تب تسک‌ها -->
-        <div id="sec-missions" class="section">
-            <div class="card">
-                <div class="card-title">📌 تسک‌های فعال</div>
-                <div class="list-row"><span>عضویت در کانال رسمی (+0.1 💎)</span><button class="btn btn-gold" style="width:auto; padding:6px 12px; font-size:12px;" onclick="alert('تسک با موفقیت انجام شد!')">انجام</button></div>
-            </div>
-        </div>
-
-        <!-- تب پروفایل -->
-        <div id="sec-profile" class="section">
-            <div class="card">
-                <div class="card-title">💎 واریز مستقیم به کیف پول TON</div>
-                <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">ولت ادمین: <strong style="color:var(--blue); word-break:break-all;">UQADZJgp7eKNKaa0a7f7cZ3vDuOVEt2zVUr4wzyhZ_PgIRlI</strong></div>
-                <input type="number" id="deposit-amount" placeholder="مقدار TON (مثلا 1)">
-                <button class="btn btn-blue" style="margin-bottom:12px;" onclick="payWithTonkeeper()">پرداخت و انتقال مستقیم به Tonkeeper 🚀</button>
-                <button class="btn btn-gold" onclick="verifyDeposit()">بررسی و تایید تراکنش ✅</button>
-            </div>
-
-            <div class="card">
-                <div class="card-title">📤 برداشت TON</div>
-                <input type="number" id="withdraw-amount" placeholder="مقدار TON برای برداشت">
-                <button class="btn btn-purple" onclick="requestWithdrawal()">ثبت درخواست برداشت</button>
-            </div>
-
-            <div class="card">
-                <div class="card-title">👤 حساب کاربری و آمار</div>
-                <div class="list-row"><span>نام بازیکن:</span><strong id="prof-name" style="color:var(--blue);">بازیکن</strong></div>
-                <div class="list-row"><span>شناسه عددی:</span><strong id="prof-id">123456</strong></div>
-                <div class="list-row"><span>آمار برد / باخت:</span><strong id="prof-stats" style="color:var(--gold);">3 برد / 1 باخت</strong></div>
-            </div>
-        </div>
-
-        <!-- تب مدیریت ادمین -->
-        <div id="sec-admin" class="section">
-            <div class="card">
-                <div class="card-title">⚙️ پنل مدیریت و تنظیمات</div>
-                <label>درصد مالیات هر راند:</label>
-                <input type="number" id="adm-fee" value="5">
-                <button class="btn btn-gold" onclick="alert('تنظیمات با موفقیت ذخیره شد.')">ذخیره تنظیمات</button>
-            </div>
-            <div class="card">
-                <div class="card-title">🏆 ایجاد مسابقه جدید</div>
-                <input type="text" id="adm-tour-title" placeholder="عنوان مسابقه">
-                <input type="text" id="adm-tour-prize" placeholder="جایزه مسابقه">
-                <button class="btn btn-purple" onclick="alert('مسابقه با موفقیت ایجاد شد.')">انتشار مسابقه</button>
-            </div>
-        </div>
+    <div class="card">
+        <div class="card-title">📊 وضعیت سیستم شکارچی</div>
+        <div class="list-row"><span>مارکت‌های تحت رصد:</span><strong style="color:var(--blue);">مارکت استارز تلگرام</strong></div>
+        <div class="list-row"><span>بازه زمانی اسکن:</span><strong style="color:var(--gold);">هر ۶۰ ثانیه</strong></div>
+        <div class="list-row"><span>وضعیت ارسال کانال:</span><strong style="color:var(--green);">متصل و خودکار</strong></div>
     </div>
 
-    <!-- مودال صفحه بازی آرنا -->
-    <div id="arena-modal">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-            <button class="btn btn-red" style="width:auto; padding:6px 14px; font-size:12px;" onclick="closeArenaModal()">بازگشت ⬅️</button>
-            <div id="arena-bank-badge" style="background:rgba(245,158,11,0.15); border:1px solid var(--gold); padding:6px 14px; border-radius:12px; color:var(--gold); font-weight:800;">Total Pool: 0.00 💎</div>
-        </div>
-
-        <div class="card" style="text-align: center; padding: 18px; position:relative;">
-            <div id="arena-status-text" style="font-size: 15px; font-weight: 800; color: var(--blue); margin-bottom: 8px;">در انتظار ورود بازیکنان...</div>
-            
-            <div style="position:relative; width:180px; margin:0 auto;">
-                <div class="wheel-pointer"></div>
-                <div class="wheel-box" id="wheel-box">
-                    <div class="wheel-center">
-                        <span style="font-size: 10px; color: var(--text-muted);">TIMER</span>
-                        <span id="arena-timer" style="font-size: 20px;">15s</span>
-                    </div>
-                </div>
-            </div>
-
-            <div id="arena-result-box" style="font-size: 15px; font-weight: 900; color: var(--gold); min-height: 25px; margin-top: 8px;"></div>
-        </div>
-
-        <div class="card">
-            <div class="card-title">👥 بازیکنان حاضر در این دست</div>
-            <div id="arena-players-list" style="font-size:12px; color:var(--text-muted);">هنوز بازیکنی وارد نشده است.</div>
-        </div>
-
-        <div class="card">
-            <div class="card-title">انتخاب مبلغ ورودی (TON)</div>
-            <div style="display:flex; gap:8px;">
-                <button class="btn btn-purple" onclick="joinArena(0.01)">0.01 💎</button>
-                <button class="btn btn-purple" onclick="joinArena(0.1)">0.1 💎</button>
-                <button class="btn btn-purple" onclick="joinArena(1)">1 💎</button>
-            </div>
-        </div>
+    <div class="card">
+        <div class="card-title">⚙️ تنظیمات آستانه تخفیف</div>
+        <label>حداقل درصد تخفیف برای ارسال در کانال:</label>
+        <input type="number" id="min-discount" value="15" placeholder="مثلا 15 درصد زیر قیمت کف">
+        <button class="btn btn-blue" onclick="alert('تنظیمات با موفقیت ذخیره شد.')">ذخیره تنظیمات 💾</button>
     </div>
 
-    <!-- ناوبری پایین صفحه -->
-    <div class="bottom-nav">
-        <div class="nav-item active" onclick="switchTab('games', this)"><span class="nav-icon">⚔️</span>بازی‌ها</div>
-        <div class="nav-item" onclick="switchTab('leaderboard', this)"><span class="nav-icon">🏅</span>لیدربرد</div>
-        <div class="nav-item" onclick="switchTab('missions', this)"><span class="nav-icon">🎯</span>تسک‌ها</div>
-        <div class="nav-item" onclick="switchTab('profile', this)"><span class="nav-icon">👤</span>پروفایل</div>
-        <div id="nav-admin" class="nav-item" onclick="switchTab('admin', this)"><span class="nav-icon">👑</span>مدیریت</div>
+    <div class="card">
+        <div class="card-title">🔥 آخرین آیتم‌های شکار شده</div>
+        <div id="latest-hunts">
+            <div class="list-row"><span>Gift #4521 (150 ⭐️)</span><strong style="color:var(--green);">ارسال شد ✅</strong></div>
+        </div>
     </div>
 
     <script>
@@ -212,97 +74,6 @@
             tg.expand();
             tg.ready();
         } catch (e) { console.log('Telegram WebApp not ready'); }
-
-        const tgUser = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : { id: 123456, first_name: 'هرمزد' };
-        
-        let userBalance = 5.00;
-
-        document.getElementById('prof-name').innerText = tgUser.first_name;
-        document.getElementById('prof-id').innerText = tgUser.id;
-        document.getElementById('user-balance').innerText = userBalance.toFixed(2);
-
-        // تابع تعویض تب‌ها با قابلیت نمایش تضمینی
-        function switchTab(tabName, element) {
-            document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
-            
-            const targetSec = document.getElementById('sec-' + tabName);
-            if (targetSec) {
-                targetSec.classList.add('active');
-            }
-            if (element) {
-                element.classList.add('active');
-            }
-        }
-
-        function openArenaModal() {
-            document.getElementById('arena-modal').style.display = 'block';
-        }
-
-        function closeArenaModal() {
-            document.getElementById('arena-modal').style.display = 'none';
-        }
-
-        function payWithTonkeeper() {
-            const amount = parseFloat(document.getElementById('deposit-amount').value);
-            if (!amount || amount <= 0) return alert('لطفاً مقدار معتبری وارد کنید.');
-
-            const recipient = "UQADZJgp7eKNKaa0a7f7cZ3vDuOVEt2zVUr4wzyhZ_PgIRlI";
-            const nanoTon = Math.floor(amount * 1000000000);
-            const comment = "User_" + tgUser.id;
-
-            const tonLink = `ton://transfer/${recipient}?amount=${nanoTon}&text=${encodeURIComponent(comment)}`;
-            window.location.href = tonLink;
-        }
-
-        function verifyDeposit() {
-            const amount = parseFloat(document.getElementById('deposit-amount').value);
-            if (!amount || amount <= 0) return alert('مقدار واریزی را وارد کنید.');
-
-            userBalance += amount;
-            document.getElementById('user-balance').innerText = userBalance.toFixed(2);
-            alert('واریز شما تایید و به موجودی اضافه شد!');
-        }
-
-        function requestWithdrawal() {
-            const amount = parseFloat(document.getElementById('withdraw-amount').value);
-            if (!amount || amount <= 0) return alert('مقدار نامعتبر است.');
-            if (amount > userBalance) return alert('موجودی کافی نیست.');
-
-            userBalance -= amount;
-            document.getElementById('user-balance').innerText = userBalance.toFixed(2);
-            alert('درخواست برداشت ثبت شد.');
-        }
-
-        function joinArena(amount) {
-            if (userBalance < amount) return alert('موجودی الماس کافی نیست! ابتدا واریز کنید.');
-            
-            userBalance -= amount;
-            document.getElementById('user-balance').innerText = userBalance.toFixed(2);
-            document.getElementById('arena-bank-badge').innerText = `Total Pool: ${amount.toFixed(2)} 💎`;
-            document.getElementById('arena-status-text').innerText = 'شمارش معکوس ورود بازیکنان...';
-            
-            let timeLeft = 5;
-            let timerInterval = setInterval(() => {
-                timeLeft--;
-                document.getElementById('arena-timer').innerText = timeLeft + 's';
-                
-                if (timeLeft <= 0) {
-                    clearInterval(timerInterval);
-                    document.getElementById('arena-status-text').innerText = 'چرخش گردونه شانس...';
-                    document.getElementById('wheel-box').classList.add('spinning');
-                    
-                    setTimeout(() => {
-                        document.getElementById('wheel-box').classList.remove('spinning');
-                        document.getElementById('arena-status-text').innerText = 'مسابقه تمام شد!';
-                        let winAmount = amount * 1.9;
-                        userBalance += winAmount;
-                        document.getElementById('user-balance').innerText = userBalance.toFixed(2);
-                        document.getElementById('arena-result-box').innerText = `👑 برنده شدید: +${winAmount.toFixed(2)} 💎`;
-                    }, 4000);
-                }
-            }, 1000);
-        }
     </script>
 </body>
 </html>
