@@ -3,7 +3,6 @@ const fetch = require('node-fetch');
 const express = require('express');
 const path = require('path');
 
-// توکن ربات تلگرام شما
 const TOKEN = '9173107929:AAG4CcOtg-8bT_4G_a4qJpN9LlJSrI7yBLg';
 const bot = new TelegramBot(TOKEN, { polling: true });
 
@@ -13,13 +12,12 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 let db = {
   adminId: null, 
-  adminWallet: 'UQD...AdminWalletAddressHere...', // والت ادمین برای دریافت تون
+  adminWallet: 'UQD...AdminWalletAddressHere...', // آدرس والت ادمین برای دریافت تون
   channels: [], 
-  subscriptions: {}, // { userId: { expireAt: timestamp, durationDays: number, channels: [] } }
-  prices: { 1: { days: 7, price: 1 }, 2: { days: 30, price: 3 } } // پلن های اشتراک
+  subscriptions: {}, 
+  prices: { 1: { days: 7, price: 1 }, 2: { days: 30, price: 3 } }
 };
 
-// دریافت قیمت لحظه‌ای TON به دلار و تومان
 async function getTonPrices() {
   try {
     const resUsd = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=usd');
@@ -33,7 +31,6 @@ async function getTonPrices() {
   }
 }
 
-// بررسی تراکنش از طریق TonAPI برای تایید واریز کاربر
 async function verifyTonTransaction(commentMemo, expectedAmount) {
   try {
     const url = `https://tonapi.io/v2/blockchain/accounts/${db.adminWallet}/transactions?limit=10`;
@@ -87,18 +84,18 @@ bot.on('callback_query', async (query) => {
       reply_markup: {
         inline_keyboard: [
           [{ text: '📝 تنظیم والت دریافت تون', callback_data: 'set_wallet' }],
-          [{ text: '📢 مدیریت کانال‌ها و ارسال قیمت', callback_data: 'manage_channels' }]
+          [{ text: '📢 مدیریت کانال‌ها', callback_data: 'manage_channels' }]
         ]
       }
     });
   }
 });
 
-// ارسال خودکار قیمت به کانال‌ها همراه با ساعت و تاریخ ایران و ایموجی وضعیت
+// ارسال خودکار قیمت به کانال همراه با تاریخ و ساعت ایران و ایموجی وضعیت
 setInterval(async () => {
   const now = Date.now();
   const { usd, tomman } = await getTonPrices();
-  const emoji = '🟢'; // وضعیت صعودی/ثابت (یا 🔴)
+  const emoji = '🟢'; // 🟢 برای صعودی/ثابت، 🔴 برای نزولی
 
   for (const [userId, sub] of Object.entries(db.subscriptions)) {
     if (sub.expireAt > now) {
