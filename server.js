@@ -12,7 +12,6 @@ const TOKEN = '9173107929:AAG4CcOtg-8bT_4G_a4qJpN9LlJSrI7yBLg';
 const bot = new TelegramBot(TOKEN, { polling: true });
 const WEB_APP_URL = process.env.RENDER_EXTERNAL_URL || 'https://poker.onrender.com';
 
-// ارائه خودکار فایل مانیفست TON Connect برای جلوگیری از خطای کیف پول
 app.get('/tonconnect-manifest.json', (req, res) => {
     res.json({
         url: WEB_APP_URL,
@@ -26,15 +25,14 @@ const db = {
     users: {},
     tournaments: [],
     tasks: [],
-    bonuses: {},
     settings: {
         feePercent: 5,
-        adminWallet: 'EQD...WalletAddressExample...',
+        adminWallet: 'EQD...AdminWalletExample...',
         dailyActive: false,
         dailyAmount: 0.05
     },
     activeArenaGame: {
-        status: 'waiting', // waiting, countdown, spinning, finished
+        status: 'waiting',
         timer: 15,
         players: [],
         bank: 0,
@@ -55,14 +53,12 @@ function getOrCreateUser(id, name = 'بازیکن', username = '') {
             losses: 0,
             joinedDate: new Date().toLocaleDateString('fa-IR'),
             banned: false,
-            claimedBonuses: [],
             history: []
         };
     }
     return db.users[id];
 }
 
-// --- API های مینی‌اپ ---
 app.post('/api/sync', (req, res) => {
     const { id, first_name, username } = req.body;
     if (!id) return res.status(400).json({ error: 'Invalid User' });
@@ -88,12 +84,10 @@ app.post('/api/sync', (req, res) => {
 });
 
 app.post('/api/deposit', (req, res) => {
-    const { id, amount, txHash } = req.body;
+    const { id, amount } = req.body;
     const user = db.users[id];
     if (!user) return res.status(404).json();
 
-    const txId = txHash || 'TX_' + Date.now();
-    db.transactions.push({ id: txId, userId: id, type: 'واریز TON', amount, status: 'تایید شده', date: new Date().toLocaleDateString('fa-IR') });
     user.balance += Number(amount);
     user.history.unshift(`+${amount} TON (واریز موفق)`);
     res.json({ success: true, user });
@@ -105,20 +99,14 @@ app.post('/api/withdraw', (req, res) => {
     if (!user || user.balance < amount) return res.status(400).json({ error: 'موجودی کافی نیست.' });
 
     user.balance -= Number(amount);
-    db.transactions.push({ userId: id, type: 'برداشت TON', amount, wallet, status: 'در حال بررسی', date: new Date().toLocaleDateString('fa-IR') });
     user.history.unshift(`-${amount} TON (درخواست برداشت)`);
     res.json({ success: true, user });
 });
 
-// بازی آرنا
 app.post('/api/arena/join', (req, res) => {
     const { id, amount } = req.body;
     const user = db.users[id];
     if (!user || user.balance < amount) return res.status(400).json({ error: 'موجودی کافی نیست.' });
-
-    if (db.activeArenaGame.status === 'spinning' || db.activeArenaGame.status === 'finished') {
-        return res.status(400).json({ error: 'در حال حاضر ورود به این دست بسته شده است، چند ثانیه صبر کنید.' });
-    }
 
     user.balance -= Number(amount);
     db.activeArenaGame.bank += Number(amount);
@@ -158,11 +146,10 @@ app.post('/api/arena/join', (req, res) => {
     res.json({ success: true, arena: db.activeArenaGame, user });
 });
 
-// پنل مدیریت ادمین
 app.post('/api/admin/data', (req, res) => {
     const { adminId } = req.body;
     if (!db.admins.includes(Number(adminId))) return res.status(403).json();
-    res.json({ settings: db.settings, tournaments: db.tournaments, tasks: db.tasks, transactions: db.transactions });
+    res.json({ settings: db.settings, tournaments: db.tournaments, tasks: db.tasks });
 });
 
 app.post('/api/admin/update-settings', (req, res) => {
