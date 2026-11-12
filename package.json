@@ -1,12 +1,13 @@
 {
-  "name": "arena-ton-miniapp",
-  "version": "2.0.0",
+  "name": "ton-price-bot",
+  "version": "1.0.0",
+  "description": "TON Price Bot for Telegram",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.19.2",
-    "node-telegram-bot-api": "^0.65.1"
+    "node-telegram-bot-api": "^0.65.1",
+    "axios": "^1.6.8"
   }
 }
