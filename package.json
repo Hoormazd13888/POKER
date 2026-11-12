@@ -1,7 +1,7 @@
 {
-  "name": "ton-arena-roulette-bot",
-  "version": "5.0.0",
-  "description": "Telegram Mini-App Casino Bot with Arena, Roulette, and Wallet",
+  "name": "ton-arena-casino-bot",
+  "version": "6.0.0",
+  "description": "Professional Telegram Casino Bot with Arena, Roulette, Tonkeeper Deposit/Withdraw",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
