@@ -15,31 +15,59 @@ const io = new Server(server, { cors: { origin: "*" } });
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
-const COLORS = ['#00E5FF', '#FF2E93', '#FFD600', '#00E676', '#AA00FF', '#FF6D00'];
+const PLAYER_COLORS = ['#00E5FF', '#FF2E93', '#FFD600', '#00E676', '#AA00FF', '#FF6D00'];
 const usersBalances = {};
+let adminWallet = 'UQD...AdminWalletAddressHere...'; // والت ادمین برای واریزها
+let adminId = null;
 
 // وضعیت رولت
 let rouletteState = { status: 'WAITING', timer: 15, pot: 0, tax: 0, finalPrize: 0, players: [], winner: null, winningAngle: 0 };
 let rouletteInterval = null;
 
 // وضعیت آرنا
-let arenaState = { status: 'WAITING', timer: 15, pot: 0, tax: 0, finalPrize: 0, players: [], winner: null, ballPosition: { x: 50, y: 50 } };
+let arenaState = { status: 'WAITING', timer: 15, pot: 0, tax: 0, finalPrize: 0, players: [], winner: null, ballPos: { x: 50, y: 50 } };
 let arenaInterval = null;
 
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
+  if (!adminId) adminId = chatId; // اولین کسی که /start بزند ادمین می‌شود
   const firstName = msg.from.first_name || 'کاربر';
   const webAppUrl = 'https://poker-xqj6.onrender.com/';
 
-  bot.sendMessage(chatId, `👑 **به آرنا خوش آمدید!**\n\nجایی برای بازی، هیجان و برد بزرگ با TON.`, {
+  bot.sendMessage(chatId, `👑 **به آرنا خوش آمدید!**\n\nهیجان برد بزرگ با تون‌کوین[span_0](start_span)[span_0](end_span).`, {
     parse_mode: 'Markdown',
     reply_markup: {
-      inline_keyboard: [[{ text: '🚀 ورود به مینی‌اپ بازی', web_app: { url: webAppUrl } }]]
+      inline_keyboard: [
+        [{ text: '🚀 ورود به مینی‌اپ بازی', web_app: { url: webAppUrl } }],
+        [{ text: '⚙️ پنل مدیریت ادمین', callback_data: 'admin_panel' }]
+      ]
     }
   });
 });
 
-// --- منطق رولت ---
+bot.on('callback_query', async (query) => {
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+
+  if (query.data === 'admin_panel') {
+    if (userId !== adminId) {
+      return bot.answerCallbackQuery(query.id, { text: 'شما ادمین نیستید!', show_alert: true });
+    }
+    bot.sendMessage(chatId, `⚙️ **پنل مدیریت ادمین**\n\n- والت ثبت شده: \`${adminWallet}\``, {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '📝 تنظیم آدرس والت دریافت', callback_data: 'set_admin_wallet' }]
+        ]
+      }
+    });
+  } else if (query.data === 'set_admin_wallet') {
+    bot.sendMessage(chatId, 'لطفاً آدرس جدید والت خود را بفرستید:');
+    // ذخیره موقت حالت ادمین
+  }
+});
+
+// --- رولت ---
 function recalculateRoulette() {
   let currentAngle = 0;
   rouletteState.pot = rouletteState.players.reduce((sum, p) => sum + p.bet, 0);
@@ -103,7 +131,7 @@ function resetRoulette() {
   io.emit('rouletteState', rouletteState);
 }
 
-// --- منطق آرنا ---
+// --- آرنا ---
 function recalculateArena() {
   arenaState.pot = arenaState.players.reduce((sum, p) => sum + p.bet, 0);
   arenaState.tax = Math.round(arenaState.pot * 0.05);
@@ -157,7 +185,7 @@ function spinArena() {
 }
 
 function resetArena() {
-  arenaState = { status: 'WAITING', timer: 15, pot: 0, tax: 0, finalPrize: 0, players: [], winner: null, ballPosition: { x: 50, y: 50 } };
+  arenaState = { status: 'WAITING', timer: 15, pot: 0, tax: 0, finalPrize: 0, players: [], winner: null, ballPos: { x: 50, y: 50 } };
   io.emit('arenaState', arenaState);
 }
 
@@ -165,23 +193,42 @@ io.on('connection', (socket) => {
   socket.emit('rouletteState', rouletteState);
   socket.emit('arenaState', arenaState);
 
-  socket.on('getWallet', (userId) => {
-    if (!usersBalances[userId]) usersBalances[userId] = 1000; // موجودی تست اولیه
-    socket.emit('balanceUpdate', usersBalances[userId]);
-  });
-
-  socket.on('walletAction', ({ userId, type, amount }) => {
+  socket.on('getData', (userId) => {
     if (!usersBalances[userId]) usersBalances[userId] = 1000;
-    const val = parseFloat(amount);
-    if (type === 'deposit') usersBalances[userId] += val;
-    else if (type === 'withdraw' && usersBalances[userId] >= val) usersBalances[userId] -= val;
-    socket.emit('balanceUpdate', usersBalances[userId]);
+    socket.emit('initData', { balance: usersBalances[userId], adminWallet });
   });
 
-  socket.on('placeRouletteBet', ({ userId, username, amount }) => {
+  // ثبت درخواست برداشت و ارسال به ادمین
+  socket.on('withdrawRequest', ({ userId, username, amount, address }) => {
+    const val = parseFloat(amount);
+    if (!usersBalances[userId] || usersBalances[userId] < val) {
+      socket.emit('errorMsg', 'موجودی کافی نیست!');
+      return;
+    }
+
+    usersBalances[userId] -= val;
+    socket.emit('balanceUpdate', usersBalances[userId]);
+
+    if (adminId) {
+      bot.sendMessage(adminId, `🔔 **درخواست برداشت جدید**\n\n👤 کاربر: ${username} (\`${userId}\`)\n💰 مبلغ: ${val} TON\n📍 آدرس والت: \`${address}\``, {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: '✅ تایید و واریز شد', callback_data: `w_accept_${userId}_${val}` },
+              { text: '❌ رد و برگشت وجه', callback_data: `w_reject_${userId}_${val}` }
+            ]
+          ]
+        }
+      });
+    }
+    socket.emit('successMsg', 'درخواست برداشت ثبت شد و به ادمین ارسال گردید.');
+  });
+
+  socket.on('placeRouletteBet', ({ userId, username, photoUrl, amount }) => {
     const bet = parseFloat(amount);
     if (!usersBalances[userId]) usersBalances[userId] = 1000;
-    if (usersBalances[userId] < bet) { socket.emit('errorMsg', 'موجودی والت کافی نیست!'); return; }
+    if (usersBalances[userId] < bet) { socket.emit('errorMsg', 'موجودی کافی نیست!'); return; }
 
     usersBalances[userId] -= bet;
     socket.emit('balanceUpdate', usersBalances[userId]);
@@ -190,8 +237,8 @@ io.on('connection', (socket) => {
     if (p) { p.bet += bet; }
     else {
       rouletteState.players.push({
-        id: userId, name: username || 'Player', bet,
-        color: COLORS[rouletteState.players.length % COLORS.length], percentage: 0, startAngle: 0, endAngle: 0
+        id: userId, name: username || 'Player', photo: photoUrl || '', bet,
+        color: PLAYER_COLORS[rouletteState.players.length % PLAYER_COLORS.length], percentage: 0, startAngle: 0, endAngle: 0
       });
     }
 
@@ -202,10 +249,10 @@ io.on('connection', (socket) => {
     io.emit('rouletteState', rouletteState);
   });
 
-  socket.on('placeArenaBet', ({ userId, username, amount }) => {
+  socket.on('placeArenaBet', ({ userId, username, photoUrl, amount }) => {
     const bet = parseFloat(amount);
     if (!usersBalances[userId]) usersBalances[userId] = 1000;
-    if (usersBalances[userId] < bet) { socket.emit('errorMsg', 'موجودی والت کافی نیست!'); return; }
+    if (usersBalances[userId] < bet) { socket.emit('errorMsg', 'موجودی کافی نیست!'); return; }
 
     usersBalances[userId] -= bet;
     socket.emit('balanceUpdate', usersBalances[userId]);
@@ -214,8 +261,8 @@ io.on('connection', (socket) => {
     if (p) { p.bet += bet; }
     else {
       arenaState.players.push({
-        id: userId, name: username || 'Player', bet,
-        color: COLORS[arenaState.players.length % COLORS.length], percentage: 0
+        id: userId, name: username || 'Player', photo: photoUrl || '', bet,
+        color: PLAYER_COLORS[arenaState.players.length % PLAYER_COLORS.length], percentage: 0
       });
     }
 
@@ -225,6 +272,27 @@ io.on('connection', (socket) => {
     }
     io.emit('arenaState', arenaState);
   });
+});
+
+// مدیریت تایید یا رد برداشت توسط ادمین در ربات تلگرام
+bot.on('callback_query', async (query) => {
+  const data = query.data;
+  if (data.startsWith('w_')) {
+    const parts = data.split('_');
+    const action = parts[1]; // accept یا reject
+    const userId = parts[2];
+    const amount = parseFloat(parts[3]);
+
+    if (action === 'accept') {
+      bot.sendMessage(userId, `✅ درخواست برداشت شما به مبلغ ${amount} TON توسط ادمین تایید و واریز شد!`);
+      bot.editMessageText(`✅ درخواست برداشت ${userId} (${amount} TON) تایید شد.`, { chat_id: query.message.chat.id, message_id: query.message.message_id });
+    } else {
+      if (!usersBalances[userId]) usersBalances[userId] = 0;
+      usersBalances[userId] += amount; // برگشت وجه
+      bot.sendMessage(userId, `❌ درخواست برداشت شما رد شد و ${amount} TON به موجودی شما برگشت خورد.`);
+      bot.editMessageText(`❌ درخواست برداشت ${userId} (${amount} TON) رد شد و وجه برگشت خورد.`, { chat_id: query.message.chat.id, message_id: query.message.message_id });
+    }
+  }
 });
 
 const PORT = process.env.PORT || 3000;
