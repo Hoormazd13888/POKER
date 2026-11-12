@@ -1,245 +1,231 @@
-const TelegramBot = require('node-telegram-bot-api');
-const fetch = require('node-fetch');
 const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
 const path = require('path');
+const crypto = require('crypto');
+const TelegramBot = require('node-telegram-bot-api');
 
 const TOKEN = '9173107929:AAG4CcOtg-8bT_4G_a4qJpN9LlJSrI7yBLg';
 const bot = new TelegramBot(TOKEN, { polling: true });
 
 const app = express();
-app.use(express.json());
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: "*" } });
+
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.json());
 
-// دیتابیس حافظه موقت
-let db = {
-  adminId: null, 
-  adminWallet: 'UQD...AdminWalletAddressHere...', 
-  channels: [], // لیست کانال‌هایی که ربات در آن‌ها قیمت می‌فرستد
-  sendIntervalHours: 1, // زمان ارسال هر پیام (پیش‌فرض هر ۱ ساعت)
-  userBalances: {}, // { userId: balanceTon }
-  subscriptions: {}, // { userId: { expireAt, channels: [] } }
-  prices: { 
-    1: { days: 7, price: 1 }, 
-    2: { days: 30, price: 3 } 
-  }
-};
+const COLORS = ['#00E5FF', '#FF2E93', '#FFD600', '#00E676', '#AA00FF', '#FF6D00'];
+const usersBalances = {};
 
-let adminStates = {};
+// وضعیت رولت
+let rouletteState = { status: 'WAITING', timer: 15, pot: 0, tax: 0, finalPrize: 0, players: [], winner: null, winningAngle: 0 };
+let rouletteInterval = null;
 
-async function getTonPrices() {
-  try {
-    const resUsd = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=usd');
-    const dataUsd = await resUsd.json();
-    const priceUsd = dataUsd['the-open-network']?.usd || 5.0;
-    const priceTomman = Math.round(priceUsd * 60000); 
-
-    return { usd: priceUsd.toFixed(2), tomman: priceTomman.toLocaleString('fa-IR') };
-  } catch (err) {
-    return { usd: '5.00', tomman: '300,000' };
-  }
-}
-
-async function verifyTonTransaction(commentMemo, expectedAmount) {
-  try {
-    const url = `https://tonapi.io/v2/blockchain/accounts/${db.adminWallet}/transactions?limit=10`;
-    const response = await fetch(url);
-    const data = await response.json();
-
-    if (!data.transactions) return false;
-
-    for (const tx of data.transactions) {
-      if (tx.in_msg && tx.in_msg.comment === String(commentMemo)) {
-        const valueTon = tx.in_msg.value / 1e9; 
-        if (valueTon >= parseFloat(expectedAmount)) {
-          return true; 
-        }
-      }
-    }
-    return false;
-  } catch (e) {
-    console.error('Error verifying tx:', e);
-    return false;
-  }
-}
+// وضعیت آرنا
+let arenaState = { status: 'WAITING', timer: 15, pot: 0, tax: 0, finalPrize: 0, players: [], winner: null, ballPosition: { x: 50, y: 50 } };
+let arenaInterval = null;
 
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
   const firstName = msg.from.first_name || 'کاربر';
   const webAppUrl = 'https://poker-xqj6.onrender.com/';
 
-  bot.sendMessage(chatId, `سلام ${firstName} عزیز! 💎\nبه ربات مدیریت کانال‌های قیمت TON خوش آمدید.`, {
+  bot.sendMessage(chatId, `👑 **به آرنا خوش آمدید!**\n\nجایی برای بازی، هیجان و برد بزرگ با TON.`, {
+    parse_mode: 'Markdown',
     reply_markup: {
-      inline_keyboard: [
-        [{ text: '🛒 خرید / تمدید اشتراک', web_app: { url: webAppUrl } }],
-        [{ text: '⚙️ پنل مدیریت ادمین', callback_data: 'admin_panel' }]
-      ]
+      inline_keyboard: [[{ text: '🚀 ورود به مینی‌اپ بازی', web_app: { url: webAppUrl } }]]
     }
   });
 });
 
-bot.on('callback_query', async (query) => {
-  const chatId = query.message.chat.id;
-  const userId = query.from.id;
+// --- منطق رولت ---
+function recalculateRoulette() {
+  let currentAngle = 0;
+  rouletteState.pot = rouletteState.players.reduce((sum, p) => sum + p.bet, 0);
+  rouletteState.tax = Math.round(rouletteState.pot * 0.05);
+  rouletteState.finalPrize = rouletteState.pot - rouletteState.tax;
 
-  if (query.data === 'admin_panel') {
-    if (!db.adminId) db.adminId = userId; 
-    if (userId !== db.adminId) {
-      return bot.answerCallbackQuery(query.id, { text: 'شما دسترسی ادمین ندارید!', show_alert: true });
-    }
-
-    bot.sendMessage(chatId, `⚙️ **پنل مدیریت پیشرفته ادمین**\n\n- والت: \`${db.adminWallet}\`\n- تعداد کانال‌ها: ${db.channels.length}\n- زمان ارسال: هر ${db.sendIntervalHours} ساعت`, {
-      parse_mode: 'Markdown',
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: '📝 تغییر والت دریافت تون', callback_data: 'set_wallet' }],
-          [{ text: '➕ افزودن کانال جدید', callback_data: 'add_channel' }],
-          [{ text: '⏱️ تنظیم زمان ارسال پیام', callback_data: 'set_interval' }],
-          [{ text: '💵 مدیریت واریز و افزایش موجودی', callback_data: 'add_balance' }],
-          [{ text: '🏷️ تعیین قیمت اشتراک‌ها', callback_data: 'set_prices' }],
-          [{ text: '📢 لیست کانال‌ها', callback_data: 'list_channels' }]
-        ]
-      }
-    });
-  } else if (query.data === 'set_wallet') {
-    if (userId !== db.adminId) return;
-    adminStates[userId] = 'WAITING_FOR_WALLET';
-    bot.sendMessage(chatId, `لطفاً آدرس جدید والت ادمین را بفرستید:`);
-  } else if (query.data === 'add_channel') {
-    if (userId !== db.adminId) return;
-    adminStates[userId] = 'WAITING_FOR_CHANNEL';
-    bot.sendMessage(chatId, `لطفاً آیدی کانال (مثلاً @ChannelID یا آیدی عددی) را بفرستید (اطمینان حاصل کنید ربات در کانال ادمین است):`);
-  } else if (query.data === 'set_interval') {
-    if (userId !== db.adminId) return;
-    adminStates[userId] = 'WAITING_FOR_INTERVAL';
-    bot.sendMessage(chatId, `تعداد ساعات بین هر ارسال را وارد کنید (مثلاً عدد 1 برای هر ساعت):`);
-  } else if (query.data === 'add_balance') {
-    if (userId !== db.adminId) return;
-    adminStates[userId] = 'WAITING_FOR_BALANCE';
-    bot.sendMessage(chatId, `فرمت را به این شکل بفرستید (آیدی عددی و مبلغ):\n\`UserID Amount\`\nمثال: \`123456789 5\``, { parse_mode: 'Markdown' });
-  } else if (query.data === 'set_prices') {
-    if (userId !== db.adminId) return;
-    adminStates[userId] = 'WAITING_FOR_PRICES';
-    bot.sendMessage(chatId, `فرمت قیمت‌ها را به این صورت بفرستید (روز و قیمت):\n\`Days Price\`\nمثال برای ۷ روز با ۱ تون: \`7 1\``, { parse_mode: 'Markdown' });
-  } else if (query.data === 'list_channels') {
-    if (userId !== db.adminId) return;
-    const list = db.channels.length > 0 ? db.channels.join('\n') : 'هیچ کانالی ثبت نشده است.';
-    bot.sendMessage(chatId, `📢 **لیست کانال‌های ربات:**\n\n${list}`, { parse_mode: 'Markdown' });
-  }
-});
-
-// دریافت پیام‌های متنی ادمین برای مدیریت
-bot.on('message', (msg) => {
-  const chatId = msg.chat.id;
-  const userId = msg.from.id;
-  const text = msg.text;
-
-  if (userId !== db.adminId || !adminStates[userId]) return;
-
-  const state = adminStates[userId];
-
-  if (state === 'WAITING_FOR_WALLET') {
-    db.adminWallet = text.trim();
-    delete adminStates[userId];
-    bot.sendMessage(chatId, `✅ والت ادمین ثبت شد.`);
-  } else if (state === 'WAITING_FOR_CHANNEL') {
-    const ch = text.trim();
-    if (!db.channels.includes(ch)) db.channels.push(ch);
-    delete adminStates[userId];
-    bot.sendMessage(chatId, `✅ کانال ${ch} با موفقیت اضافه شد.`);
-  } else if (state === 'WAITING_FOR_INTERVAL') {
-    const hours = parseInt(text);
-    if (!isNaN(hours) && hours > 0) {
-      db.sendIntervalHours = hours;
-      delete adminStates[userId];
-      bot.sendMessage(chatId, `✅ زمان ارسال هر ${hours} ساعت تنظیم شد.`);
-    } else {
-      bot.sendMessage(chatId, `❌ مقدار نامعتبر است. یک عدد صحیح وارد کنید.`);
-    }
-  } else if (state === 'WAITING_FOR_BALANCE') {
-    const parts = text.split(' ');
-    if (parts.length >= 2) {
-      const targetUser = parts[0];
-      const amount = parseFloat(parts[1]);
-      if (!db.userBalances[targetUser]) db.userBalances[targetUser] = 0;
-      db.userBalances[targetUser] += amount;
-      delete adminStates[userId];
-      bot.sendMessage(chatId, `✅ موجودی کاربر ${targetUser} به میزان ${amount} تون افزایش یافت.`);
-    } else {
-      bot.sendMessage(chatId, `❌ فرمت اشتباه است. مثال: 123456789 5`);
-    }
-  } else if (state === 'WAITING_FOR_PRICES') {
-    const parts = text.split(' ');
-    if (parts.length >= 2) {
-      const days = parseInt(parts[0]);
-      const price = parseFloat(parts[1]);
-      const newId = Date.now();
-      db.prices[newId] = { days, price };
-      delete adminStates[userId];
-      bot.sendMessage(chatId, `✅ پلن اشتراک ${days} روزه با قیمت ${price} تون اضافه شد.`);
-    } else {
-      bot.sendMessage(chatId, `❌ فرمت اشتباه است. مثال: 7 1`);
-    }
-  }
-});
-
-// ارسال خودکار قیمت به تمام کانال‌های ثبت شده بر اساس زمان تنظیم شده توسط ادمین
-setInterval(async () => {
-  const { usd, tomman } = await getTonPrices();
-  const emoji = '🟢'; 
-
-  for (const channelId of db.channels) {
-    const text = `💎 **TONCOIN PRICE UPDATE**\n\n` +
-                 `💵 قیمت دلار: **$${usd}** ${emoji}\n` +
-                 `🇮🇷 قیمت تومان: **${tomman} تومان**\n\n` +
-                 `⏰ ساعت و تاریخ: ${new Date().toLocaleString('fa-IR', { timeZone: 'Asia/Tehran' })}`;
-
-    bot.sendMessage(channelId, text, { parse_mode: 'Markdown' }).catch(err => console.log('Channel send error:', err.message));
-  }
-}, db.sendIntervalHours * 60 * 60 * 1000);
-
-app.get('/api/data/:userId', (req, res) => {
-  const userId = req.params.userId;
-  const sub = db.subscriptions[userId] || { expireAt: 0, channels: [] };
-  res.json({
-    wallet: db.adminWallet,
-    plans: db.prices,
-    balance: db.userBalances[userId] || 0,
-    subscription: sub
+  rouletteState.players.forEach(p => {
+    p.percentage = rouletteState.pot > 0 ? Math.round((p.bet / rouletteState.pot) * 100) : 0;
+    const sliceAngle = rouletteState.pot > 0 ? (p.bet / rouletteState.pot) * 360 : 0;
+    p.startAngle = currentAngle;
+    p.endAngle = currentAngle + sliceAngle;
+    currentAngle += sliceAngle;
   });
-});
+}
 
-app.post('/api/verify-payment', async (req, res) => {
-  const { userId, planId } = req.body;
-  const plan = db.prices[planId];
-  if (!plan) return res.status(400).json({ success: false, message: 'پلن نامعتبر است' });
+function startRouletteCountdown() {
+  if (rouletteInterval) return;
+  rouletteState.status = 'COUNTDOWN';
+  rouletteState.timer = 15;
 
-  const isPaid = await verifyTonTransaction(userId, plan.price);
+  rouletteInterval = setInterval(() => {
+    if (rouletteState.players.length < 2) {
+      rouletteState.timer = 15;
+      io.emit('rouletteState', rouletteState);
+      return;
+    }
+    rouletteState.timer--;
+    io.emit('rouletteState', rouletteState);
 
-  if (isPaid) {
-    const expireTime = Date.now() + (plan.days * 24 * 60 * 60 * 1000);
-    db.subscriptions[userId] = {
-      expireAt: expireTime,
-      durationDays: plan.days,
-      channels: db.subscriptions[userId]?.channels || []
-    };
+    if (rouletteState.timer <= 0) {
+      clearInterval(rouletteInterval);
+      rouletteInterval = null;
+      spinRoulette();
+    }
+  }, 1000);
+}
 
-    bot.sendMessage(userId, `✅ پرداخت تایید شد! اشتراک ${plan.days} روزه شما فعال گردید.`);
-    return res.json({ success: true, message: 'پرداخت تایید شد' });
-  } else {
-    return res.json({ success: false, message: 'تراکنش در بلاک‌چین تایید نشد.' });
-  }
-});
+function spinRoulette() {
+  if (rouletteState.players.length < 2) { resetRoulette(); return; }
+  rouletteState.status = 'SPINNING';
+  const targetAngle = (crypto.randomInt(0, 1000000) / 1000000) * 360;
+  rouletteState.winningAngle = targetAngle;
 
-app.post('/api/set-channel', (req, res) => {
-  const { userId, channelUsername } = req.body;
-  const cleanChannel = channelUsername.trim();
-  if (!db.channels.includes(cleanChannel)) {
-    db.channels.push(cleanChannel);
-  }
-  res.json({ success: true, message: 'کانال با موفقیت ثبت شد' });
+  const winner = rouletteState.players.find(p => targetAngle >= p.startAngle && targetAngle < p.endAngle) || rouletteState.players[rouletteState.players.length - 1];
+  rouletteState.winner = winner;
+
+  if (!usersBalances[winner.id]) usersBalances[winner.id] = 1000;
+  usersBalances[winner.id] += rouletteState.finalPrize;
+
+  io.emit('rouletteSpinStart', { winningAngle: targetAngle, winner, prize: rouletteState.finalPrize });
+
+  setTimeout(() => {
+    rouletteState.status = 'RESULT';
+    io.emit('rouletteState', rouletteState);
+    setTimeout(resetRoulette, 4000);
+  }, 5000);
+}
+
+function resetRoulette() {
+  rouletteState = { status: 'WAITING', timer: 15, pot: 0, tax: 0, finalPrize: 0, players: [], winner: null, winningAngle: 0 };
+  io.emit('rouletteState', rouletteState);
+}
+
+// --- منطق آرنا ---
+function recalculateArena() {
+  arenaState.pot = arenaState.players.reduce((sum, p) => sum + p.bet, 0);
+  arenaState.tax = Math.round(arenaState.pot * 0.05);
+  arenaState.finalPrize = arenaState.pot - arenaState.tax;
+
+  arenaState.players.forEach(p => {
+    p.percentage = arenaState.pot > 0 ? Math.round((p.bet / arenaState.pot) * 100) : 0;
+  });
+}
+
+function startArenaCountdown() {
+  if (arenaInterval) return;
+  arenaState.status = 'COUNTDOWN';
+  arenaState.timer = 15;
+
+  arenaInterval = setInterval(() => {
+    if (arenaState.players.length < 2) {
+      arenaState.timer = 15;
+      io.emit('arenaState', arenaState);
+      return;
+    }
+    arenaState.timer--;
+    io.emit('arenaState', arenaState);
+
+    if (arenaState.timer <= 0) {
+      clearInterval(arenaInterval);
+      arenaInterval = null;
+      spinArena();
+    }
+  }, 1000);
+}
+
+function spinArena() {
+  if (arenaState.players.length < 2) { resetArena(); return; }
+  arenaState.status = 'SPINNING';
+
+  const winnerIndex = crypto.randomInt(0, arenaState.players.length);
+  const winner = arenaState.players[winnerIndex];
+  arenaState.winner = winner;
+
+  if (!usersBalances[winner.id]) usersBalances[winner.id] = 1000;
+  usersBalances[winner.id] += arenaState.finalPrize;
+
+  io.emit('arenaSpinStart', { winner, prize: arenaState.finalPrize });
+
+  setTimeout(() => {
+    arenaState.status = 'RESULT';
+    io.emit('arenaState', arenaState);
+    setTimeout(resetArena, 4000);
+  }, 4000);
+}
+
+function resetArena() {
+  arenaState = { status: 'WAITING', timer: 15, pot: 0, tax: 0, finalPrize: 0, players: [], winner: null, ballPosition: { x: 50, y: 50 } };
+  io.emit('arenaState', arenaState);
+}
+
+io.on('connection', (socket) => {
+  socket.emit('rouletteState', rouletteState);
+  socket.emit('arenaState', arenaState);
+
+  socket.on('getWallet', (userId) => {
+    if (!usersBalances[userId]) usersBalances[userId] = 1000; // موجودی تست اولیه
+    socket.emit('balanceUpdate', usersBalances[userId]);
+  });
+
+  socket.on('walletAction', ({ userId, type, amount }) => {
+    if (!usersBalances[userId]) usersBalances[userId] = 1000;
+    const val = parseFloat(amount);
+    if (type === 'deposit') usersBalances[userId] += val;
+    else if (type === 'withdraw' && usersBalances[userId] >= val) usersBalances[userId] -= val;
+    socket.emit('balanceUpdate', usersBalances[userId]);
+  });
+
+  socket.on('placeRouletteBet', ({ userId, username, amount }) => {
+    const bet = parseFloat(amount);
+    if (!usersBalances[userId]) usersBalances[userId] = 1000;
+    if (usersBalances[userId] < bet) { socket.emit('errorMsg', 'موجودی والت کافی نیست!'); return; }
+
+    usersBalances[userId] -= bet;
+    socket.emit('balanceUpdate', usersBalances[userId]);
+
+    let p = rouletteState.players.find(x => x.id === userId);
+    if (p) { p.bet += bet; }
+    else {
+      rouletteState.players.push({
+        id: userId, name: username || 'Player', bet,
+        color: COLORS[rouletteState.players.length % COLORS.length], percentage: 0, startAngle: 0, endAngle: 0
+      });
+    }
+
+    recalculateRoulette();
+    if (rouletteState.status === 'WAITING' || rouletteState.status === 'COUNTDOWN') {
+      startRouletteCountdown();
+    }
+    io.emit('rouletteState', rouletteState);
+  });
+
+  socket.on('placeArenaBet', ({ userId, username, amount }) => {
+    const bet = parseFloat(amount);
+    if (!usersBalances[userId]) usersBalances[userId] = 1000;
+    if (usersBalances[userId] < bet) { socket.emit('errorMsg', 'موجودی والت کافی نیست!'); return; }
+
+    usersBalances[userId] -= bet;
+    socket.emit('balanceUpdate', usersBalances[userId]);
+
+    let p = arenaState.players.find(x => x.id === userId);
+    if (p) { p.bet += bet; }
+    else {
+      arenaState.players.push({
+        id: userId, name: username || 'Player', bet,
+        color: COLORS[arenaState.players.length % COLORS.length], percentage: 0
+      });
+    }
+
+    recalculateArena();
+    if (arenaState.status === 'WAITING' || arenaState.status === 'COUNTDOWN') {
+      startArenaCountdown();
+    }
+    io.emit('arenaState', arenaState);
+  });
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
