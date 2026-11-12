@@ -12,13 +12,7 @@ const TOKEN = '9173107929:AAG4CcOtg-8bT_4G_a4qJpN9LlJSrI7yBLg';
 const bot = new TelegramBot(TOKEN, { polling: true });
 const WEB_APP_URL = process.env.RENDER_EXTERNAL_URL || 'https://poker.onrender.com';
 
-app.get('/tonconnect-manifest.json', (req, res) => {
-    res.json({
-        url: WEB_APP_URL,
-        name: "POKER GIFT",
-        iconUrl: "https://ton.org/download/ton_symbol.png"
-    });
-});
+const ADMIN_WALLET = 'UQADZJgp7eKNKaa0a7f7cZ3vDuOVEt2zVUr4wzyhZ_PgIRlI';
 
 const db = {
     admins: [],
@@ -27,7 +21,7 @@ const db = {
     tasks: [],
     settings: {
         feePercent: 5,
-        adminWallet: 'EQD...AdminWalletExample...',
+        adminWallet: ADMIN_WALLET,
         dailyActive: false,
         dailyAmount: 0.05
     },
@@ -59,6 +53,7 @@ function getOrCreateUser(id, name = 'بازیکن', username = '') {
     return db.users[id];
 }
 
+// --- API های مینی‌اپ ---
 app.post('/api/sync', (req, res) => {
     const { id, first_name, username } = req.body;
     if (!id) return res.status(400).json({ error: 'Invalid User' });
@@ -78,19 +73,32 @@ app.post('/api/sync', (req, res) => {
         tasks: db.tasks,
         dailyBonus: db.settings.dailyActive ? db.settings.dailyAmount : null,
         arena: db.activeArenaGame,
-        adminWallet: db.settings.adminWallet,
+        adminWallet: ADMIN_WALLET,
         isAdmin: db.admins.includes(Number(id))
     });
 });
 
-app.post('/api/deposit', (req, res) => {
+// شبیه‌سازی بررسی و تایید اتوماتیک تراکنش (یا ارسال به ادمین بعد از ۵ دقیقه)
+app.post('/api/verify-deposit', (req, res) => {
     const { id, amount } = req.body;
     const user = db.users[id];
-    if (!user) return res.status(404).json();
+    if (!user) return res.status(404).json({ error: 'کاربر یافت نشد' });
 
-    user.balance += Number(amount);
-    user.history.unshift(`+${amount} TON (واریز موفق)`);
-    res.json({ success: true, user });
+    // فرض بررسی موفق آنی در نمونه، در صورت نیاز به API بلاکچین اینجا متصل می‌شود
+    const success = true; 
+
+    if (success) {
+        user.balance += Number(amount);
+        user.history.unshift(`+${amount} TON (واریز موفق و تایید شد)`);
+        db.transactions.push({ userId: id, amount, type: 'واریز', status: 'تایید شده', date: new Date().toLocaleDateString('fa-IR') });
+        res.json({ success: true, message: 'واریز شما با موفقیت تایید و به موجودی اضافه شد!', user });
+    } else {
+        // اگر بعد از 5 دقیقه تایید نشد
+        setTimeout(() => {
+            db.transactions.push({ userId: id, amount, type: 'واریز', status: 'در انتظار بررسی ادمین', date: new Date().toLocaleDateString('fa-IR') });
+        }, 300000);
+        res.json({ success: false, message: 'تراکنش پیدا نشد. به ادمین برای بررسی ارسال شد.' });
+    }
 });
 
 app.post('/api/withdraw', (req, res) => {
@@ -149,14 +157,13 @@ app.post('/api/arena/join', (req, res) => {
 app.post('/api/admin/data', (req, res) => {
     const { adminId } = req.body;
     if (!db.admins.includes(Number(adminId))) return res.status(403).json();
-    res.json({ settings: db.settings, tournaments: db.tournaments, tasks: db.tasks });
+    res.json({ settings: db.settings, tournaments: db.tournaments, tasks: db.tasks, transactions: db.transactions });
 });
 
 app.post('/api/admin/update-settings', (req, res) => {
-    const { adminId, feePercent, adminWallet, dailyActive, dailyAmount } = req.body;
+    const { adminId, feePercent, dailyActive, dailyAmount } = req.body;
     if (!db.admins.includes(Number(adminId))) return res.status(403).json();
     db.settings.feePercent = Number(feePercent);
-    db.settings.adminWallet = adminWallet;
     db.settings.dailyActive = dailyActive;
     db.settings.dailyAmount = Number(dailyAmount);
     res.json({ success: true });
