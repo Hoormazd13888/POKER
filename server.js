@@ -52,7 +52,7 @@ bot.on('callback_query', (query) => {
   }
 });
 
-// دریافت عکس
+// دریافت عکس بنر (مرحله ۱)
 bot.on('photo', async (msg) => {
   const chatId = msg.chat.id;
   if (!adminStates[chatId]) return;
@@ -60,7 +60,7 @@ bot.on('photo', async (msg) => {
 
   if (state.step === 'BANNER_PHOTO') {
     const photo = msg.photo;
-    state.data.bannerPhotoId = photo[photo.length - 1].file_id; // ذخیره فایل آیدی عکس
+    state.data.bannerPhotoId = photo[photo.length - 1].file_id;
     state.step = 'PRIZE';
     
     bot.sendMessage(chatId, `✅ عکس بنر دریافت شد.\n\n🏆 **مرحله ۲ از ۵:**\nعنوان یا نوع جایزه قرعه‌کشی را بنویسید (مثلاً: ۱۰۰ تون‌کوین):`, {
@@ -70,7 +70,7 @@ bot.on('photo', async (msg) => {
   }
 });
 
-// دریافت پیام‌های متنی (مراحل بعدی)
+// دریافت پیام‌های متنی و مدیریت مراحل
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
@@ -79,6 +79,7 @@ bot.on('message', async (msg) => {
   if (!adminStates[chatId]) return;
   const state = adminStates[chatId];
 
+  // مرحله ۲: جایزه
   if (state.step === 'PRIZE') {
     state.data.prize = text.trim();
     state.step = 'DESC';
@@ -87,6 +88,7 @@ bot.on('message', async (msg) => {
       reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
     });
   }
+  // مرحله ۳: توضیحات
   else if (state.step === 'DESC') {
     state.data.description = text.trim() === 'رد' ? '' : text.trim();
     state.step = 'TYPE';
@@ -95,18 +97,20 @@ bot.on('message', async (msg) => {
       reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
     });
   }
+  // مرحله ۴: نوع قرعه‌کشی
   else if (state.step === 'TYPE') {
-    if (text.trim() === '1') {
+    const trimmed = text.trim();
+    if (trimmed === '1') {
       state.data.type = 'FREE';
       state.step = 'TIME';
       bot.sendMessage(chatId, `⏰ مدت زمان قرعه‌کشی به **دقیقه** را وارد کنید (مثلاً: 60):`, {
         parse_mode: 'Markdown',
         reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
       });
-    } else if (text.trim() === '2') {
+    } else if (trimmed === '2') {
       state.data.type = 'TICKET';
       state.step = 'TICKET_DETAILS';
-      bot.sendMessage(chatId, `🎫 فرمت قیمت و تعداد کل تیکت‌ها را بفرستید:\n\`قیمت_استارز تعداد_کل\`\nمثال: \`5 10\``, {
+      bot.sendMessage(chatId, `🎫 فرمت قیمت و تعداد کل تیکت‌ها را با فاصله بفرستید:\nمثال: \`5 10\` (یعنی ۵ استارز و ۱۰ تیکت کل)`, {
         parse_mode: 'Markdown',
         reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
       });
@@ -114,26 +118,28 @@ bot.on('message', async (msg) => {
       bot.sendMessage(chatId, `⚠️ لطفاً فقط عدد 1 یا 2 را بفرستید.`);
     }
   }
+  // دریافت جزئیات تیکت‌ها (اصلاح‌شده و ایمن)
   else if (state.step === 'TICKET_DETAILS') {
-    const parts = text.split(' ');
+    const parts = text.trim().split(/\s+/);
     if (parts.length >= 2) {
       state.data.ticketPrice = parseInt(parts[0]);
       state.data.maxTickets = parseInt(parts[1]);
       state.step = 'CHANNEL';
-      bot.sendMessage(chatId, `📢 **مرحله ۵ (آخر):**\nآیدی کانال یا گروه مقصد را بفرستید (مثلاً: \`@ChannelName\`):`, {
+      bot.sendMessage(chatId, `✅ جزئیات تیکت ثبت شد.\n\n📢 **مرحله ۵ (آخر):**\nآیدی کانال یا گروه مقصد را بفرستید (مثلاً: \`@ChannelName\`):`, {
         parse_mode: 'Markdown',
         reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
       });
     } else {
-      bot.sendMessage(chatId, `⚠️ فرمت اشتباه است. مثال: \`5 10\``, { parse_mode: 'Markdown' });
+      bot.sendMessage(chatId, `⚠️ فرمت اشتباه است. لطفاً دو عدد با فاصله بفرستید. مثال: \`5 10\``, { parse_mode: 'Markdown' });
     }
   }
+  // دریافت زمان (برای حالت رایگان)
   else if (state.step === 'TIME') {
-    const minutes = parseInt(text);
+    const minutes = parseInt(text.trim());
     if (!isNaN(minutes)) {
       state.data.durationMinutes = minutes;
       state.step = 'CHANNEL';
-      bot.sendMessage(chatId, `📢 **مرحله ۵ (آخر):**\nآیدی کانال یا گروه مقصد را بفرستید (مثلاً: \`@ChannelName\`):`, {
+      bot.sendMessage(chatId, `✅ زمان ثبت شد.\n\n📢 **مرحله ۵ (آخر):**\nآیدی کانال یا گروه مقصد را بفرستید (مثلاً: \`@ChannelName\`):`, {
         parse_mode: 'Markdown',
         reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
       });
@@ -141,6 +147,7 @@ bot.on('message', async (msg) => {
       bot.sendMessage(chatId, `⚠️ لطفاً یک عدد معتبر به دقیقه وارد کنید.`);
     }
   }
+  // مرحله آخر: کانال مقصد و انتشار نهایی
   else if (state.step === 'CHANNEL') {
     const channel = text.trim();
     state.data.channel = channel;
