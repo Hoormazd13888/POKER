@@ -10,16 +10,15 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// دیتابیس حافظه موقت با قابلیت ذخیره وضعیت ادمین و کانال‌ها
+// دیتابیس حافظه موقت
 let db = {
   adminId: null, 
-  adminWallet: 'UQD...AdminWalletAddressHere...', // آدرس والت ادمین پیش‌فرض
+  adminWallet: 'UQD...AdminWalletAddressHere...', // آدرس والت ادمین
   channels: [], 
-  subscriptions: {}, 
+  subscriptions: {}, // { userId: { expireAt, channels: [] } }
   prices: { 1: { days: 7, price: 1 }, 2: { days: 30, price: 3 } }
 };
 
-// وضعیت موقت برای دریافت متن از ادمین (مثل ارسال آدرس والت جدید)
 let adminStates = {};
 
 async function getTonPrices() {
@@ -58,6 +57,7 @@ async function verifyTonTransaction(commentMemo, expectedAmount) {
   }
 }
 
+// دستور /start و منوی اصلی ربات
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
   const firstName = msg.from.first_name || 'کاربر';
@@ -73,22 +73,24 @@ bot.onText(/\/start/, (msg) => {
   });
 });
 
+// مدیریت کلیک دکمه‌های شیشه‌ای ربات
 bot.on('callback_query', async (query) => {
   const chatId = query.message.chat.id;
   const userId = query.from.id;
 
   if (query.data === 'admin_panel') {
-    if (!db.adminId) db.adminId = userId; 
+    if (!db.adminId) db.adminId = userId; // اولین کسی که پنل را باز کند ادمین می‌شود
     if (userId !== db.adminId) {
       return bot.answerCallbackQuery(query.id, { text: 'شما دسترسی ادمین ندارید!', show_alert: true });
     }
 
-    bot.sendMessage(chatId, `⚙️ **پنل مدیریت ادمین**\n\n- والت ثبت شده: \`${db.adminWallet}\`\n- تعداد کانال‌ها: ${db.channels.length}`, {
+    bot.sendMessage(chatId, `⚙️ **پنل مدیریت پیشرفته ادمین**\n\n- والت ثبت شده: \`${db.adminWallet}\`\n- تعداد کل کانال‌های فعال: ${db.channels.length}`, {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [
-          [{ text: '📝 تنظیم والت دریافت تون', callback_data: 'set_wallet' }],
-          [{ text: '📢 لیست کانال‌ها', callback_data: 'list_channels' }]
+          [{ text: '📝 تغییر والت دریافت تون', callback_data: 'set_wallet' }],
+          [{ text: '📢 مشاهده لیست کانال‌ها', callback_data: 'list_channels' }],
+          [{ text: '📊 آمار کلی ربات', callback_data: 'bot_stats' }]
         ]
       }
     });
@@ -100,6 +102,10 @@ bot.on('callback_query', async (query) => {
     if (userId !== db.adminId) return;
     const list = db.channels.length > 0 ? db.channels.join('\n') : 'هیچ کانالی ثبت نشده است.';
     bot.sendMessage(chatId, `📢 **لیست کانال‌های متصل:**\n\n${list}`, { parse_mode: 'Markdown' });
+  } else if (query.data === 'bot_stats') {
+    if (userId !== db.adminId) return;
+    const activeSubs = Object.keys(db.subscriptions).length;
+    bot.sendMessage(chatId, `📊 **آمار ربات:**\n\n- کاربران دارای اشتراک فعال: ${activeSubs}\n- کل کانال‌ها: ${db.channels.length}`);
   }
 });
 
@@ -116,7 +122,7 @@ bot.on('message', (msg) => {
   }
 });
 
-// ارسال خودکار قیمت به کانال‌ها
+// ارسال خودکار قیمت به کانال‌ها هر ۱ ساعت
 setInterval(async () => {
   const now = Date.now();
   const { usd, tomman } = await getTonPrices();
@@ -177,9 +183,10 @@ app.post('/api/set-channel', (req, res) => {
     return res.status(403).json({ success: false, message: 'اشتراک فعال ندارید یا اشتراک شما منقضی شده است!' });
   }
 
-  if (!db.subscriptions[userId].channels.includes(channelUsername)) {
-    db.subscriptions[userId].channels.push(channelUsername);
-    if (!db.channels.includes(channelUsername)) db.channels.push(channelUsername);
+  const cleanChannel = channelUsername.trim();
+  if (!db.subscriptions[userId].channels.includes(cleanChannel)) {
+    db.subscriptions[userId].channels.push(cleanChannel);
+    if (!db.channels.includes(cleanChannel)) db.channels.push(cleanChannel);
   }
 
   res.json({ success: true, message: 'کانال با موفقیت ثبت شد و ارسال قیمت آغاز خواهد شد' });
