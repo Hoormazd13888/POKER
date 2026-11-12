@@ -5,12 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>POKER GIFT</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
     <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet">
     <style>
         :root {
             --bg-deep: #07070b;
-            --card-bg: rgba(20, 20, 30, 0.9);
+            --card-bg: rgba(20, 20, 30, 0.95);
             --gold: #f59e0b;
             --purple: #9333ea;
             --blue: #38bdf8;
@@ -118,14 +117,18 @@
             </div>
         </div>
 
-        <!-- تب پروفایل -->
+        <!-- تب پروفایل و واریز مستقیم به Tonkeeper -->
         <div id="sec-profile" class="section">
             <div class="card">
-                <div class="card-title">💎 کیف پول شبکه TON</div>
-                <div id="ton-connect" style="margin-bottom:14px; display:flex; justify-content:center;"></div>
-                <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">آدرس ولت رسمی واریز: <strong id="admin-wallet-show" style="color:var(--blue); word-break:break-all;">-</strong></div>
-                <input type="number" id="deposit-amount" placeholder="مقدار TON واریزی">
-                <button class="btn btn-blue" style="margin-bottom:12px;" onclick="registerDeposit()">ثبت واریز تراکنش</button>
+                <div class="card-title">💎 واریز مستقیم به کیف پول TON</div>
+                <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">ولت ادمین: <strong style="color:var(--blue); word-break:break-all;">UQADZJgp7eKNKaa0a7f7cZ3vDuOVEt2zVUr4wzyhZ_PgIRlI</strong></div>
+                <input type="number" id="deposit-amount" placeholder="مقدار TON (مثلا 1)">
+                <button class="btn btn-blue" style="margin-bottom:12px;" onclick="payWithTonkeeper()">پرداخت و انتقال مستقیم به Tonkeeper 🚀</button>
+                <button class="btn btn-gold" onclick="verifyDeposit()">بررسی و تایید تراکنش ✅</button>
+            </div>
+
+            <div class="card">
+                <div class="card-title">📤 برداشت TON</div>
                 <input type="number" id="withdraw-amount" placeholder="مقدار TON برای برداشت">
                 <button class="btn btn-purple" onclick="requestWithdrawal()">ثبت درخواست برداشت</button>
             </div>
@@ -150,8 +153,6 @@
                 <div class="card-title">⚙️ تنظیمات مالی و مالیات آرنا</div>
                 <label>درصد مالیات هر راند:</label>
                 <input type="number" id="adm-fee" placeholder="مثلا 5">
-                <label>آدرس ولت رسمی ادمین:</label>
-                <input type="text" id="adm-wallet" placeholder="EQD...">
                 <label>وضعیت پاداش روزانه:</label>
                 <select id="adm-daily-active">
                     <option value="true">فعال</option>
@@ -160,19 +161,6 @@
                 <label>مقدار پاداش روزانه:</label>
                 <input type="number" id="adm-daily-amount" placeholder="مقدار">
                 <button class="btn btn-gold" onclick="saveSettings()">ذخیره تنظیمات</button>
-            </div>
-            <div class="card">
-                <div class="card-title">🏆 ایجاد مسابقه جدید</div>
-                <input type="text" id="adm-tour-title" placeholder="عنوان مسابقه">
-                <input type="text" id="adm-tour-prize" placeholder="جایزه مسابقه">
-                <input type="text" id="adm-tour-rules" placeholder="قوانین مسابقه">
-                <button class="btn btn-purple" onclick="createTournament()">انتشار مسابقه</button>
-            </div>
-            <div class="card">
-                <div class="card-title">📌 افزودن تسک جدید</div>
-                <input type="text" id="adm-task-title" placeholder="عنوان تسک">
-                <input type="number" id="adm-task-reward" placeholder="پاداش 💎">
-                <button class="btn btn-gold" onclick="addTask()">ثبت تسک</button>
             </div>
         </div>
     </div>
@@ -233,15 +221,6 @@
         } catch (e) { console.log('Telegram WebApp not ready'); }
 
         const tgUser = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : { id: 999999, first_name: 'کاربر تستی' };
-
-        let tonConnectUI = null;
-        try {
-            tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
-                manifestUrl: window.location.origin + '/tonconnect-manifest.json',
-                buttonRootId: 'ton-connect'
-            });
-        } catch (e) { console.log('TonConnect error:', e); }
-
         let currentUser = null;
 
         function switchTab(tabName, element) {
@@ -261,6 +240,33 @@
             document.getElementById('arena-modal').style.display = 'none';
         }
 
+        // انتقال مستقیم به Tonkeeper با مقدار و آیدی کاربر به عنوان کامنت (Memo)
+        function payWithTonkeeper() {
+            const amount = parseFloat(document.getElementById('deposit-amount').value);
+            if (!amount || amount <= 0) return alert('لطفاً مقدار معتبری وارد کنید.');
+
+            const recipient = "UQADZJgp7eKNKaa0a7f7cZ3vDuOVEt2zVUr4wzyhZ_PgIRlI";
+            const nanoTon = Math.floor(amount * 1000000000);
+            const comment = "User_" + tgUser.id;
+
+            const tonLink = `ton://transfer/${recipient}?amount=${nanoTon}&text=${encodeURIComponent(comment)}`;
+            window.location.href = tonLink;
+        }
+
+        async function verifyDeposit() {
+            const amount = parseFloat(document.getElementById('deposit-amount').value);
+            if (!amount || amount <= 0) return alert('مقدار واریزی را وارد کنید.');
+
+            const res = await fetch('/api/verify-deposit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: tgUser.id, amount })
+            });
+            const data = await res.json();
+            alert(data.message);
+            if (data.success) syncData();
+        }
+
         async function syncData() {
             try {
                 const response = await fetch('/api/sync', {
@@ -276,7 +282,6 @@
                 document.getElementById('prof-id').innerText = currentUser.id;
                 document.getElementById('prof-date').innerText = currentUser.joinedDate;
                 document.getElementById('prof-stats').innerText = `${currentUser.wins} برد / ${currentUser.losses} باخت`;
-                document.getElementById('admin-wallet-show').innerText = data.adminWallet;
                 document.getElementById('waiting-count').innerText = data.arena.players.length;
 
                 if (currentUser.history.length > 0) {
@@ -289,33 +294,38 @@
                     `).join('');
                 }
 
-                if (data.tournaments.length > 0) {
-                    document.getElementById('tournaments-container').innerHTML = data.tournaments.map(t => `
-                        <div class="list-row"><div><strong>${t.title}</strong><div style="color:var(--gold);">جایزه: ${t.prize}</div><div style="font-size:11px; color:var(--text-muted);">${t.rules}</div></div><span style="color:#22c55e; font-weight:800;">${t.status}</span></div>
-                    `).join('');
-                }
-
-                if (data.dailyBonus) document.getElementById('daily-card').style.display = 'block';
-
-                if (data.tasks.length > 0) {
-                    document.getElementById('tasks-container').innerHTML = data.tasks.map(t => `
-                        <div class="list-row"><span>${t.title} (+${t.reward} 💎)</span><button class="btn btn-gold" style="width:auto; padding:6px 12px; font-size:12px;">انجام</button></div>
-                    `).join('');
-                }
-
                 if (data.isAdmin) {
                     document.getElementById('nav-admin').style.display = 'block';
-                    loadAdminPanel();
                 }
             } catch (err) {
                 console.error('Sync failed:', err);
             }
         }
 
-        async function loadAdminPanel() {
-            const res = await fetch('/api/admin/data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adminId: tgUser.id }) });
+        async function requestWithdrawal() {
+            const amount = parseFloat(document.getElementById('withdraw-amount').value);
+            if (!amount || amount <= 0) return alert('مقدار نامعتبر است.');
+            const res = await fetch('/api/withdraw', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tgUser.id, amount, wallet: 'User_Wallet' }) });
             const data = await res.json();
-            document.getElementById('adm-fee').value = data.settings.feePercent;
-            document.getElementById('adm-wallet').value = data.settings.adminWallet;
-            document.getElementById('adm-daily-active').value = data.settings.dailyActive;
-          
+            if (data.error) alert(data.error); else { alert('درخواست برداشت ثبت شد.'); syncData(); }
+        }
+
+        async function saveSettings() {
+            await fetch('/api/admin/update-settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    adminId: tgUser.id,
+                    feePercent: document.getElementById('adm-fee').value,
+                    dailyActive: document.getElementById('adm-daily-active').value === 'true',
+                    dailyAmount: document.getElementById('adm-daily-amount').value
+                })
+            });
+            alert('تنظیمات ذخیره شد.');
+        }
+
+        async function joinArena(amount) {
+            if (!currentUser || currentUser.balance < amount) return alert('موجودی الماس کافی نیست! ابتدا از بخش پروفایل واریز کنید.');
+            const res = await fetch('/api/arena/join', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tgUser.id, amount }) });
+            const data = await res.json();
+  
