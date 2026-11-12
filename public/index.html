@@ -117,7 +117,7 @@
             </div>
         </div>
 
-        <!-- تب پروفایل و واریز مستقیم به Tonkeeper -->
+        <!-- تب پروفایل -->
         <div id="sec-profile" class="section">
             <div class="card">
                 <div class="card-title">💎 واریز مستقیم به کیف پول TON</div>
@@ -240,7 +240,6 @@
             document.getElementById('arena-modal').style.display = 'none';
         }
 
-        // انتقال مستقیم به Tonkeeper با مقدار و آیدی کاربر به عنوان کامنت (Memo)
         function payWithTonkeeper() {
             const amount = parseFloat(document.getElementById('deposit-amount').value);
             if (!amount || amount <= 0) return alert('لطفاً مقدار معتبری وارد کنید.');
@@ -305,7 +304,7 @@
         async function requestWithdrawal() {
             const amount = parseFloat(document.getElementById('withdraw-amount').value);
             if (!amount || amount <= 0) return alert('مقدار نامعتبر است.');
-            const res = await fetch('/api/withdraw', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tgUser.id, amount, wallet: 'User_Wallet' }) });
+            const res = await fetch('/api/withdraw', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tgUser.id, amount }) });
             const data = await res.json();
             if (data.error) alert(data.error); else { alert('درخواست برداشت ثبت شد.'); syncData(); }
         }
@@ -328,4 +327,7 @@
             if (!currentUser || currentUser.balance < amount) return alert('موجودی الماس کافی نیست! ابتدا از بخش پروفایل واریز کنید.');
             const res = await fetch('/api/arena/join', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tgUser.id, amount }) });
             const data = await res.json();
-  
+            if (data.error) return alert(data.error);
+
+            if (data.success) {
+                document.getElementById('arena-b
