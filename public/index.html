@@ -3,180 +3,166 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ARENA | TON</title>
+    <title>POKER GIFT</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
     <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet">
     <style>
-        :root {
-            --bg-dark: #09090b;
-            --card-bg: #13131a;
-            --gold: #f59e0b;
-            --gold-glow: rgba(245, 158, 11, 0.3);
-            --purple: #8b5cf6;
-            --purple-glow: rgba(139, 92, 246, 0.3);
-            --text-main: #f4f4f5;
-            --text-muted: #a1a1aa;
-        }
+        :root { --bg-dark: #09090b; --card-bg: #13131a; --gold: #f59e0b; --purple: #8b5cf6; --text-main: #f4f4f5; --text-muted: #a1a1aa; }
         * { box-sizing: border-box; font-family: 'Vazirmatn', sans-serif; margin: 0; padding: 0; user-select: none; }
         body { background-color: var(--bg-dark); color: var(--text-main); padding-bottom: 85px; overflow-x: hidden; }
         
-        /* هدر و لوگو */
-        .header {
-            background: linear-gradient(135deg, #181824 0%, #09090b 100%);
-            padding: 16px; border-bottom: 1px solid rgba(245, 158, 11, 0.2);
-            display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 50;
-        }
-        .logo { font-size: 20px; font-weight: 900; background: linear-gradient(to right, var(--gold), var(--purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: 1px; }
-        .balance-badge { background: rgba(245, 158, 11, 0.15); border: 1px solid var(--gold); color: var(--gold); padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 13px; box-shadow: 0 0 10px var(--gold-glow); }
+        .header { background: #181824; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(245,158,11,0.2); position: sticky; top: 0; z-index: 50; }
+        .logo { font-size: 18px; font-weight: 900; background: linear-gradient(to right, #38bdf8, var(--purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .balance-badge { background: rgba(56,189,248,0.15); border: 1px solid #38bdf8; color: #38bdf8; padding: 5px 12px; border-radius: 20px; font-weight: bold; font-size: 13px; }
 
-        /* کارت‌ها و بخش‌ها */
         .container { padding: 16px; }
-        .section { display: none; animation: fadeIn 0.3s ease; }
+        .section { display: none; }
         .section.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .card { background: var(--card-bg); border: 1px solid rgba(139,92,246,0.2); border-radius: 16px; padding: 16px; margin-bottom: 14px; }
+        .card-title { font-size: 15px; font-weight: bold; color: var(--gold); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
 
-        .card { background: var(--card-bg); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: 16px; padding: 16px; margin-bottom: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
-        .card-title { font-size: 16px; font-weight: bold; color: var(--gold); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 12px; font-weight: bold; font-size: 14px; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px; }
+        .btn-gold { background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; }
+        .btn-purple { background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: #fff; }
+        .btn-red { background: linear-gradient(135deg, #ef4444, #b91c1c); color: #fff; }
 
-        /* دکمه‌ها */
-        .btn { width: 100%; padding: 12px; border: none; border-radius: 12px; font-weight: bold; font-size: 14px; cursor: pointer; transition: 0.2s; display: flex; justify-content: center; align-items: center; gap: 8px; }
-        .btn-gold { background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; box-shadow: 0 4px 15px var(--gold-glow); }
-        .btn-purple { background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: #fff; box-shadow: 0 4px 15px var(--purple-glow); }
-        .btn:active { transform: scale(0.97); }
+        .arena-banner { background: linear-gradient(135deg, #ef4444, #991b1b); border-radius: 16px; padding: 20px; text-align: center; color: #fff; cursor: pointer; box-shadow: 0 4px 20px rgba(239,68,68,0.4); margin-bottom: 14px; }
+        .arena-banner h2 { font-size: 22px; margin-bottom: 6px; }
 
-        /* بازی‌ها */
-        .game-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .game-box { background: linear-gradient(145deg, #1a1a26, #111118); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: 14px; padding: 14px; text-align: center; }
-        .game-icon { font-size: 32px; margin-bottom: 8px; }
-
-        /* نوار پایین */
-        .bottom-nav {
-            position: fixed; bottom: 0; left: 0; right: 0; background: #111117;
-            border-top: 1px solid rgba(139, 92, 246, 0.3); display: flex; justify-content: space-around; padding: 10px 4px; z-index: 100;
-        }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #111117; border-top: 1px solid rgba(139,92,246,0.3); display: flex; justify-content: space-around; padding: 10px 4px; z-index: 100; }
         .nav-item { color: var(--text-muted); font-size: 11px; text-align: center; cursor: pointer; flex: 1; }
         .nav-item.active { color: var(--gold); font-weight: bold; }
         .nav-icon { font-size: 20px; display: block; margin-bottom: 2px; }
 
-        /* جدول و لیست */
-        .list-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px; }
-        .badge { padding: 3px 8px; border-radius: 8px; font-size: 11px; background: rgba(139, 92, 246, 0.2); color: #c4b5fd; }
+        .list-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px; }
+        input { width: 100%; padding: 10px; background: #09090b; color: #fff; border: 1px solid #444; border-radius: 8px; margin-bottom: 8px; font-size: 13px; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <div class="logo">⚔️ ARENA | TON</div>
-        <div class="balance-badge">🪙 <span id="user-points">0</span> امتیاز</div>
+        <div class="logo">♠️ POKER GIFT</div>
+        <div class="balance-badge">💎 <span id="user-balance">0.00</span> TON</div>
     </div>
 
     <div class="container">
-        <!-- بخش خانه و بازی‌ها -->
+        <!-- بخش بازی‌ها -->
         <div id="sec-games" class="section active">
-            <div class="card">
-                <div class="card-title">🎮 میدان نبرد و بازی‌های رقابتی</div>
-                <div class="game-grid">
-                    <div class="game-box">
-                        <div class="game-icon">🎲</div>
-                        <h4>دوئل تاس AI</h4>
-                        <p style="font-size:11px; color:var(--text-muted); margin:6px 0;">رقابت با هوش مصنوعی</p>
-                        <button class="btn btn-gold" onclick="playGame('دوئل تاس AI', 200)">شروع (200 🪙)</button>
-                    </div>
-                    <div class="game-box">
-                        <div class="game-icon">⚡</div>
-                        <h4>واکنش سریع</h4>
-                        <p style="font-size:11px; color:var(--text-muted); margin:6px 0;">چالش رکورد و سرعت</p>
-                        <button class="btn btn-purple" onclick="playGame('چالش سرعت', 300)">شروع (300 🪙)</button>
-                    </div>
-                </div>
+            <div class="arena-banner" onclick="openArenaModal()">
+                <h2>⚔️ Arena</h2>
+                <p style="font-size:13px; opacity:0.9;">Battle against other players in real-time</p>
             </div>
-
+            
             <div class="card">
                 <div class="card-title">🏆 مسابقات و لیگ‌های فعال</div>
-                <div id="tournaments-list"></div>
+                <div id="tournaments-container"><p style="font-size:12px; color:var(--text-muted);">هیچ مسابقه‌ای فعال نیست.</p></div>
             </div>
         </div>
 
-        <!-- بخش مأموریت‌ها و دعوت -->
-        <div id="sec-missions" class="section">
+        <!-- بخش لیدربرد -->
+        <div id="sec-leaderboard" class="section">
             <div class="card">
-                <div class="card-title">🎯 مأموریت‌های روزانه</div>
-                <div class="list-row">
-                    <div>
-                        <strong>ورود روزانه به ARENA</strong>
-                        <div style="font-size:11px; color:var(--gold);">پاداش: +300 امتیاز</div>
-                    </div>
-                    <button id="btn-daily" class="btn btn-gold" style="width:auto; padding:8px 14px;" onclick="claimDaily()">دریافت</button>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-title">👥 دعوت دوستان (سیستم زیرمجموعه)</div>
-                <p style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">با دعوت هر دوست، ۵۰۰ امتیاز و نشان افتخار دریافت کنید.</p>
-                <div class="list-row">
-                    <span>تعداد دعوت‌های موفق شما:</span>
-                    <strong id="ref-count" style="color:var(--gold);">0 نفر</strong>
-                </div>
-                <button class="btn btn-purple" style="margin-top:10px;" onclick="copyRefLink()">🔗 کپی لینک دعوت اختصاصی</button>
-            </div>
-        </div>
-
-        <!-- بخش فروشگاه و کیف پول TON -->
-        <div id="sec-shop" class="section">
-            <div class="card">
-                <div class="card-title">💎 کیف پول شبکه TON</div>
-                <p style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">اتصال امن از طریق Tonkeeper و MyTonWallet</p>
-                <div id="ton-connect"></div>
-            </div>
-
-            <div class="card">
-                <div class="card-title">🛒 فروشگاه آیتم‌های ظاهری و VIP</div>
-                <div id="shop-list"></div>
-            </div>
-        </div>
-
-        <!-- بخش پروفایل و جدول رتبه‌بندی -->
-        <div id="sec-profile" class="section">
-            <div class="card">
-                <div class="card-title">👤 حساب کاربری و آمار</div>
-                <div class="list-row"><span>نام بازیکن:</span><strong id="prof-name">-</strong></div>
-                <div class="list-row"><span>شناسه اختصاصی:</span><strong id="prof-id">-</strong></div>
-                <div class="list-row"><span>سطح (Level):</span><span class="badge" id="prof-level">1</span></div>
-                <div class="list-row"><span>آمار برد / باخت:</span><strong id="prof-stats">0 / 0</strong></div>
-            </div>
-
-            <div class="card">
-                <div class="card-title">🏅 برترین‌های ARENA</div>
+                <div class="card-title">🏅 جدول رتبه‌بندی برترین‌ها (Leaderboard)</div>
                 <div id="leaderboard-list"></div>
             </div>
+        </div>
 
+        <!-- بخش تسک‌ها و بونوس -->
+        <div id="sec-missions" class="section">
+            <div id="daily-card" class="card" style="display:none;">
+                <div class="card-title">🎯 پاداش روزانه</div>
+                <div class="list-row">
+                    <span id="daily-text">دریافت پاداش امروز</span>
+                    <button class="btn btn-gold" style="width:auto; padding:6px 12px;" onclick="claimDaily()">دریافت</button>
+                </div>
+            </div>
             <div class="card">
-                <div class="card-title">📜 تاریخچه فعالیت‌ها</div>
-                <div id="history-list" style="font-size:12px; color:var(--text-muted);"></div>
+                <div class="card-title">🎁 فعال‌سازی بونوس / گیفت‌کد</div>
+                <input type="text" id="bonus-code-input" placeholder="کد بونوس را وارد کنید">
+                <button class="btn btn-purple" onclick="claimBonus()">بررسی و دریافت</button>
+            </div>
+            <div class="card">
+                <div class="card-title">📌 تسک‌های فعال</div>
+                <div id="tasks-container"><p style="font-size:12px; color:var(--text-muted);">تسکی وجود ندارد.</p></div>
             </div>
         </div>
 
-        <!-- پنل مدیریت (فقط برای ادمین‌ها) -->
-        <div id="sec-admin" class="section">
+        <!-- بخش پروفایل و کیف پول -->
+        <div id="sec-profile" class="section">
             <div class="card">
-                <div class="card-title">⚙️ داشبورد مدیریت کل</div>
-                <div class="list-row"><span>کل کاربران ثبت‌شده:</span><strong id="adm-users">0</strong></div>
-                <div class="list-row"><span>کل بازی‌های انجام‌شده:</span><strong id="adm-games">0</strong></div>
-                <div class="list-row"><span>تراکنش‌های TON:</span><strong id="adm-tx">0</strong></div>
+                <div class="card-title">💎 کیف پول شبکه TON و برداشت</div>
+                <div id="ton-connect" style="margin-bottom:12px;"></div>
+                <input type="number" id="withdraw-amount" placeholder="مقدار TON برای برداشت">
+                <button class="btn btn-purple" onclick="requestWithdrawal()">ثبت درخواست برداشت</button>
             </div>
             <div class="card">
-                <div class="card-title">👥 مدیریت کاربران</div>
-                <div id="adm-users-list"></div>
+                <div class="card-title">👤 حساب کاربری</div>
+                <div class="list-row"><span>نام:</span><strong id="prof-name">-</strong></div>
+                <div class="list-row"><span>آیدی:</span><strong id="prof-id">-</strong></div>
+            </div>
+            <div class="card">
+                <div class="card-title">📜 تاریخچه واریز و برداشت</div>
+                <div id="history-list" style="font-size:12px; color:var(--text-muted);">تراکنشی ثبت نشده است.</div>
+            </div>
+        </div>
+
+        <!-- پنل مدیریت ادمین -->
+        <div id="sec-admin" class="section">
+            <div class="card">
+                <div class="card-title">⚙️ تنظیمات مالی و بازی آرنا</div>
+                <label style="font-size:12px;">درصد مالیات بازی:</label>
+                <input type="number" id="adm-fee" placeholder="مثلا 5">
+                <label style="font-size:12px;">پاداش روزانه (فعال/غیرفعال):</label>
+                <select id="adm-daily-active" style="width:100%; padding:10px; background:#09090b; color:#fff; border:1px solid #444; border-radius:8px; margin-bottom:8px;">
+                    <option value="true">فعال</option>
+                    <option value="false">غیرفعال</option>
+                </select>
+                <input type="number" id="adm-daily-amount" placeholder="مقدار الماس پاداش روزانه">
+                <button class="btn btn-gold" onclick="saveSettings()">ذخیره تنظیمات</button>
+            </div>
+            <div class="card">
+                <div class="card-title">🎁 ساخت بونوس / گیفت‌کد جدید</div>
+                <input type="text" id="adm-bonus-code" placeholder="کد (مثلا GIFT2026)">
+                <input type="number" id="adm-bonus-amount" placeholder="مقدار 💎">
+                <input type="number" id="adm-bonus-uses" placeholder="تعداد دفعات استفاده مجاز">
+                <button class="btn btn-purple" onclick="createBonus()">ساخت و دریافت لینک</button>
+                <div id="adm-bonus-result" style="font-size:11px; color:var(--gold); margin-top:8px;"></div>
+            </div>
+            <div class="card">
+                <div class="card-title">📌 افزودن تسک جدید</div>
+                <input type="text" id="adm-task-title" placeholder="عنوان تسک">
+                <input type="number" id="adm-task-reward" placeholder="پاداش 💎">
+                <button class="btn btn-gold" onclick="addTask()">ثبت تسک</button>
             </div>
         </div>
     </div>
 
-    <!-- نوار ناوبری پایین -->
+    <!-- مودال بازی آرنا -->
+    <div id="arena-modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:#09090b; z-index:200; padding:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <button class="btn btn-red" style="width:auto; padding:6px 12px;" onclick="closeArenaModal()">بازگشت ⬅️</button>
+            <div id="arena-bank-badge" style="background:#181824; padding:6px 14px; border-radius:12px; color:var(--gold); font-weight:bold;">Bank: 0 💎</div>
+        </div>
+        <div style="background:#13131a; border-radius:16px; padding:30px; text-align:center; min-height:220px; display:flex; flex-direction:column; justify-content:center; align-items:center; border:1px solid #444; margin-bottom:14px;">
+            <div id="arena-status-text" style="font-size:18px; font-weight:bold; margin-bottom:10px;">Waiting for players...</div>
+            <div id="arena-timer" style="font-size:28px; color:var(--gold); font-weight:900;"></div>
+        </div>
+        <div class="card">
+            <div class="card-title">مبلغ ورودی (💎 TON)</div>
+            <div style="display:flex; gap:8px;">
+                <button class="btn btn-purple" onclick="joinArena(0.01)">0.01 💎</button>
+                <button class="btn btn-purple" onclick="joinArena(0.1)">0.1 💎</button>
+                <button class="btn btn-purple" onclick="joinArena(1)">1 💎</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- نوار پایین -->
     <div class="bottom-nav">
         <div class="nav-item active" onclick="switchTab('games', this)"><span class="nav-icon">⚔️</span>بازی‌ها</div>
+        <div class="nav-item" onclick="switchTab('leaderboard', this)"><span class="nav-icon">🏅</span>لیدربرد</div>
         <div class="nav-item" onclick="switchTab('missions', this)"><span class="nav-icon">🎯</span>مأموریت</div>
-        <div class="nav-item" onclick="switchTab('shop', this)"><span class="nav-icon">💎</span>فروشگاه/TON</div>
         <div class="nav-item" onclick="switchTab('profile', this)"><span class="nav-icon">👤</span>پروفایل</div>
         <div id="nav-admin" class="nav-item" style="display:none;" onclick="switchTab('admin', this)"><span class="nav-icon">👑</span>مدیریت</div>
     </div>
@@ -186,153 +172,120 @@
         tg.expand();
         tg.ready();
 
-        const tgUser = tg.initDataUnsafe?.user || { id: 123456789, first_name: 'بازیکن مهمان', username: 'guest' };
-        const urlParams = new URLSearchParams(window.location.search);
-        const refId = urlParams.get('ref');
-
-        // راه‌اندازی TON Connect
-        const tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
-            manifestUrl: window.location.origin + '/tonconnect-manifest.json',
-            buttonRootId: 'ton-connect'
-        });
+        const tgUser = tg.initDataUnsafe?.user || { id: 12345, first_name: 'کاربر' };
+        const tonConnectUI = new TON_CONNECT_UI.TonConnectUI({ manifestUrl: window.location.origin + '/tonconnect-manifest.json', buttonRootId: 'ton-connect' });
 
         let currentUser = null;
 
         async function syncData() {
-            const res = await fetch('/api/sync', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: tgUser.id, first_name: tgUser.first_name, username: tgUser.username, ref: refId })
-            });
+            const res = await fetch('/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tgUser.id, first_name: tgUser.first_name, username: tgUser.username }) });
             const data = await res.json();
-            if (data.error) { alert(data.error); return; }
-
             currentUser = data.user;
-            updateUI(data);
-        }
 
-        function updateUI(data) {
-            const u = data.user;
-            document.getElementById('user-points').innerText = u.points.toLocaleString();
-            document.getElementById('prof-name').innerText = u.name + (u.vip ? ' 💎' : '');
-            document.getElementById('prof-id').innerText = u.id;
-            document.getElementById('prof-level').innerText = 'سطح ' + u.level;
-            document.getElementById('prof-stats').innerText = `${u.wins} برد / ${u.losses} باخت`;
-            document.getElementById('ref-count').innerText = u.referrals + ' نفر';
+            document.getElementById('user-balance').innerText = currentUser.balance.toFixed(2);
+            document.getElementById('prof-name').innerText = currentUser.name;
+            document.getElementById('prof-id').innerText = currentUser.id;
 
-            if (u.missions.dailyClaimed) {
-                const btn = document.getElementById('btn-daily');
-                btn.innerText = 'دریافت شد ✅';
-                btn.disabled = true;
+            document.getElementById('leaderboard-list').innerHTML = data.leaderboard.map((l, i) => `
+                <div class="list-row"><span>#${i+1} ${l.name}</span><strong style="color:var(--gold);">${l.balance.toFixed(2)} 💎</strong></div>
+            `).join('');
+
+            if (data.dailyBonus) {
+                document.getElementById('daily-card').style.display = 'block';
+                document.getElementById('daily-text').innerText = `دریافت پاداش روزانه (${data.dailyBonus} 💎)`;
             }
 
-            // تورنمنت‌ها
-            document.getElementById('tournaments-list').innerHTML = data.tournaments.map(t => `
-                <div class="list-row">
-                    <div><strong>${t.title}</strong><div style="font-size:11px; color:var(--gold);">${t.prize}</div></div>
-                    <span class="badge">${t.status}</span>
-                </div>
-            `).join('');
+            if (data.tasks.length > 0) {
+                document.getElementById('tasks-container').innerHTML = data.tasks.map(t => `
+                    <div class="list-row"><span>${t.title} (+${t.reward} 💎)</span><button class="btn btn-gold" style="width:auto; padding:6px 12px;">انجام</button></div>
+                `).join('');
+            }
 
-            // فروشگاه
-            document.getElementById('shop-list').innerHTML = data.shopItems.map(item => `
-                <div class="list-row">
-                    <div><strong>${item.name}</strong><div style="font-size:11px; color:var(--text-muted);">${item.price} ${item.currency}</div></div>
-                    <button class="btn btn-gold" style="width:auto; padding:6px 12px;" onclick="buyItem('${item.id}', '${item.currency}', ${item.price})">خرید</button>
-                </div>
-            `).join('');
-
-            // لیدربرد
-            document.getElementById('leaderboard-list').innerHTML = data.leaderboard.map((l, idx) => `
-                <div class="list-row">
-                    <span>#${idx+1} ${l.name} ${l.vip ? '💎' : ''}</span>
-                    <strong style="color:var(--gold);">${l.points.toLocaleString()} 🪙</strong>
-                </div>
-            `).join('');
-
-            // تاریخچه
-            document.getElementById('history-list').innerHTML = u.history.slice(0, 6).map(h => `<div style="padding:4px 0;">• ${h}</div>`).join('');
-
-            // ادمین
             if (data.isAdmin) {
                 document.getElementById('nav-admin').style.display = 'block';
-                loadAdminData();
+                loadAdminPanel();
             }
         }
 
-        async function playGame(gameName, stake) {
-            if (currentUser.points < stake) { alert('❌ امتیاز شما برای ورود به این بازی کافی نیست!'); return; }
-            const won = Math.random() > 0.45; // شانس برد ۵۵٪
-            const res = await fetch('/api/game-result', {
+        async function loadAdminPanel() {
+            const res = await fetch('/api/admin/data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adminId: tgUser.id }) });
+            const data = await res.json();
+            document.getElementById('adm-fee').value = data.settings.feePercent;
+            document.getElementById('adm-daily-active').value = data.settings.dailyBonusActive;
+            document.getElementById('adm-daily-amount').value = data.settings.dailyBonusAmount;
+        }
+
+        async function saveSettings() {
+            await fetch('/api/admin/update-settings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: tgUser.id, gameName, won, pointsChange: stake })
+                body: JSON.stringify({
+                    adminId: tgUser.id,
+                    feePercent: document.getElementById('adm-fee').value,
+                    dailyActive: document.getElementById('adm-daily-active').value === 'true',
+                    dailyAmount: document.getElementById('adm-daily-amount').value
+                })
+            });
+            alert('تنظیمات ذخیره شد.');
+        }
+
+        async function createBonus() {
+            const code = document.getElementById('adm-bonus-code').value;
+            const amount = document.getElementById('adm-bonus-amount').value;
+            const maxUses = document.getElementById('adm-bonus-uses').value;
+            const res = await fetch('/api/admin/create-bonus', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ adminId: tgUser.id, code, amount, maxUses })
             });
             const data = await res.json();
-            alert(won ? `🎉 تبریک! در ${gameName} برنده شدید و +${stake} امتیاز گرفتید!` : `😢 متأسفانه در ${gameName} باختید!`);
-            syncData();
+            document.getElementById('adm-bonus-result').innerText = `لینک بونوس:\n${data.link}`;
         }
 
-        async function claimDaily() {
-            const res = await fetch('/api/claim-mission', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: tgUser.id })
-            });
-            if (res.ok) { alert('🎁 ۳۰۰ امتیاز پاداش روزانه اضافه شد!'); syncData(); }
+        async function claimBonus() {
+            const code = document.getElementById('bonus-code-input').value;
+            const res = await fetch('/api/bonus/claim', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tgUser.id, code }) });
+            const data = await res.json();
+            if (data.error) alert(data.error); else { alert('بونوس با موفقیت دریافت شد!'); syncData(); }
         }
 
-        async function buyItem(itemId, currency, price) {
-            if (currency === 'TON') {
-                if (!tonConnectUI.connected) { alert('لطفاً ابتدا کیف پول TON خود را متصل کنید!'); return; }
-                const tx = {
-                    validUntil: Math.floor(Date.now() / 1000) + 300,
-                    messages: [{ address: 'EQD...WalletAddressExample...', amount: (price * 1e9).toString() }]
-                };
-                try {
-                    await tonConnectUI.sendTransaction(tx);
-                } catch (e) { alert('تراکنش لغو شد.'); return; }
+        async function addTask() {
+            const title = document.getElementById('adm-task-title').value;
+            const reward = document.getElementById('adm-task-reward').value;
+            await fetch('/api/admin/add-task', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adminId: tgUser.id, title, reward }) });
+            alert('تسک افزوده شد.');
+        }
+
+        async function requestWithdrawal() {
+            const amount = parseFloat(document.getElementById('withdraw-amount').value);
+            if (!amount || amount <= 0) return alert('مقدار نامعتبر است.');
+            if (!tonConnectUI.connected) return alert('کیف پول متصل نیست.');
+            const res = await fetch('/api/withdraw', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tgUser.id, amount, wallet: tonConnectUI.wallet.account.address }) });
+            const data = await res.json();
+            if (data.error) alert(data.error); else { alert('درخواست برداشت ثبت شد.'); syncData(); }
+        }
+
+        function openArenaModal() { document.getElementById('arena-modal').style.display = 'block'; }
+        function closeArenaModal() { document.getElementById('arena-modal').style.display = 'none'; }
+
+        async function joinArena(amount) {
+            if (currentUser.balance < amount) return alert('موجودی کافی نیست.');
+            const res = await fetch('/api/arena/join', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tgUser.id, amount }) });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('arena-bank-badge').innerText = `Bank: ${data.arena.bank} 💎`;
+                document.getElementById('arena-status-text').innerText = 'شمارش معکوس ورود بازیکنان...';
+                let check = setInterval(async () => {
+                    const r = await fetch('/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tgUser.id }) });
+                    const d = await r.json();
+                    document.getElementById('arena-timer').innerText = d.arena.timer > 0 ? d.arena.timer + ' ثانیه' : 'چرخش گردونه!';
+                    if (d.arena.status === 'finished') {
+                        clearInterval(check);
+                        document.getElementById('arena-status-text').innerText = d.arena.historyText;
+                        syncData();
+                    }
+                }, 1000);
             }
-            const res = await fetch('/api/buy-item', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: tgUser.id, itemId })
-            });
-            const data = await res.json();
-            if (data.error) alert(data.error); else { alert('✅ خرید با موفقیت انجام شد!'); syncData(); }
-        }
-
-        function copyRefLink() {
-            const link = `https://t.me/YourBotUsername?start=${tgUser.id}`;
-            navigator.clipboard.writeText(link);
-            alert('🔗 لینک دعوت شما کپی شد:\n' + link);
-        }
-
-        async function loadAdminData() {
-            const res = await fetch('/api/admin/stats', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: tgUser.id })
-            });
-            const stats = await res.json();
-            document.getElementById('adm-users').innerText = stats.totalUsers;
-            document.getElementById('adm-games').innerText = stats.totalGames;
-            document.getElementById('adm-tx').innerText = stats.totalTx;
-            document.getElementById('adm-users-list').innerHTML = stats.usersList.map(u => `
-                <div class="list-row">
-                    <span>${u.name} (${u.id})</span>
-                    <button class="btn btn-purple" style="width:auto; padding:4px 10px; font-size:11px;" onclick="toggleBan(${u.id})">${u.banned ? 'رفع مسدودیت' : 'مسدود کردن'}</button>
-                </div>
-            `).join('');
-        }
-
-        async function toggleBan(targetId) {
-            await fetch('/api/admin/ban', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ adminId: tgUser.id, targetId })
-            });
-            loadAdminData();
         }
 
         function switchTab(tab, el) {
