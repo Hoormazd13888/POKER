@@ -1,107 +1,148 @@
-const TelegramBot = require('node-telegram-bot-api');
-const axios = require('axios');
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const path = require('path');
+const crypto = require('crypto');
 
-// توکن ربات شما
-const TOKEN = '9173107929:AAG4CcOtg-8bT_4G_a4qJpN9LlJSrI7yBLg';
-const bot = new TelegramBot(TOKEN, { polling: true });
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: "*" } });
 
-// تابع دریافت قیمت لحظه‌ای TON
-async function getTonPrice() {
-    try {
-        const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=usd,irr');
-        const data = response.data['the-open-network'];
-        const usd = data.usd;
-        const toman = Math.round(data.irr / 10); // تبدیل ریال به تومان
-        return { usd, toman };
-    } catch (error) {
-        console.error('خطا در دریافت قیمت:', error.message);
-        return null;
-    }
+app.use(express.static(path.join(__dirname, 'public')));
+
+// پالت رنگ‌های نئونی برای بازیکنان
+const COLORS = [
+  '#FF2E93', '#00E5FF', '#FFD600', '#00E676', 
+  '#AA00FF', '#FF6D00', '#2979FF', '#F50057'
+];
+
+// وضعیت فعلی اتاق بازی
+let gameState = {
+  status: 'WAITING', // WAITING | COUNTDOWN | SPINNING | RESULT
+  timer: 15,
+  pot: 0,
+  players: [], // { id, name, bet, color, percentage, startAngle, endAngle }
+  winner: null,
+  winningAngle: 0
+};
+
+let countdownInterval = null;
+
+function recalculateAngles() {
+  let currentAngle = 0;
+  gameState.players.forEach(p => {
+    p.percentage = (p.bet / gameState.pot) * 100;
+    const sliceAngle = (p.bet / gameState.pot) * 360;
+    p.startAngle = currentAngle;
+    p.endAngle = currentAngle + sliceAngle;
+    currentAngle += sliceAngle;
+  });
 }
 
-// دستور /start (منوی اصلی دکمه‌ای)
-bot.onText(/\/start/, async (msg) => {
-    const chatId = msg.chat.id;
-    const userName = msg.from.first_name || 'کاربر';
+function startCountdown() {
+  if (countdownInterval) return;
+  gameState.status = 'COUNTDOWN';
+  gameState.timer = 15;
 
-    const keyboard = {
-        inline_keyboard: [
-            [{ text: '📊 دریافت قیمت لحظه‌ای TON', callback_data: 'get_price' }],
-            [{ text: '🔄 درباره ربات', callback_data: 'about' }]
-        ]
-    };
+  countdownInterval = setInterval(() => {
+    gameState.timer -= 1;
+    io.emit('gameState', gameState);
 
-    bot.sendMessage(chatId, `سلام ${userName} عزیز! 👋\n\nبه ربات استعلام قیمت **تون‌کوین (TON)** خوش آمدید.\nبرای دریافت قیمت روی دکمه زیر کلیک کنید:`, {
-        parse_mode: 'Markdown',
-        reply_markup: keyboard
-    });
+    if (gameState.timer <= 0) {
+      clearInterval(countdownInterval);
+      countdownInterval = null;
+      spinWheel();
+    }
+  }, 1000);
+}
+
+function spinWheel() {
+  if (gameState.players.length === 0) {
+    resetGame();
+    return;
+  }
+
+  gameState.status = 'SPINNING';
+  
+  // انتخاب زاویه کاملاً تصادفی و امن روی سرور (0 تا 360)
+  const randomFraction = crypto.randomInt(0, 1000000) / 1000000;
+  const targetAngle = randomFraction * 360;
+  gameState.winningAngle = targetAngle;
+
+  // پیدا کردن برنده بر اساس زاویه
+  const winner = gameState.players.find(
+    p => targetAngle >= p.startAngle && targetAngle < p.endAngle
+  ) || gameState.players[gameState.players.length - 1];
+
+  gameState.winner = winner;
+  io.emit('spinStart', {
+    winningAngle: targetAngle,
+    winner: winner,
+    pot: gameState.pot
+  });
+
+  // 5 ثانیه انیمیشن چرخش + 4 ثانیه نمایش برنده
+  setTimeout(() => {
+    gameState.status = 'RESULT';
+    io.emit('gameState', gameState);
+
+    setTimeout(() => {
+      resetGame();
+    }, 4000);
+  }, 5000);
+}
+
+function resetGame() {
+  gameState = {
+    status: 'WAITING',
+    timer: 15,
+    pot: 0,
+    players: [],
+    winner: null,
+    winningAngle: 0
+  };
+  io.emit('gameState', gameState);
+}
+
+io.on('connection', (socket) => {
+  // ارسال وضعیت فعلی به کاربر جدید
+  socket.emit('gameState', gameState);
+
+  // ورود یا افزایش شرط بازیکن
+  socket.on('placeBet', ({ userId, username, amount }) => {
+    const betAmount = parseFloat(amount);
+    if (isNaN(betAmount) || betAmount <= 0) return;
+    if (gameState.status === 'SPINNING' || gameState.status === 'RESULT') return;
+
+    let existingPlayer = gameState.players.find(p => p.id === userId);
+    if (existingPlayer) {
+      existingPlayer.bet = parseFloat((existingPlayer.bet + betAmount).toFixed(4));
+    } else {
+      const color = COLORS[gameState.players.length % COLORS.length];
+      gameState.players.push({
+        id: userId,
+        name: username || `Player_${userId.slice(-4)}`,
+        bet: betAmount,
+        color: color,
+        percentage: 0,
+        startAngle: 0,
+        endAngle: 0
+      });
+    }
+
+    gameState.pot = parseFloat((gameState.pot + betAmount).toFixed(4));
+    recalculateAngles();
+
+    // شروع تایمر ۱۵ ثانیه‌ای به محض ورود اولین نفر
+    if (gameState.status === 'WAITING' && gameState.players.length >= 1) {
+      startCountdown();
+    }
+
+    io.emit('gameState', gameState);
+  });
 });
 
-// مدیریت کلیک روی دکمه‌ها
-bot.on('callback_query', async (query) => {
-    const chatId = query.message.chat.id;
-    const messageId = query.message.message_id;
-
-    if (query.data === 'get_price') {
-        const priceData = await getTonPrice();
-        if (priceData) {
-            const priceText = `💎 **گزارش لحظه‌ای قیمت تون‌کوین (TON)**\n\n` +
-                              `💵 قیمت دلار: **$${priceData.usd}**\n` +
-                              `🇮🇷 قیمت تومان: **${priceData.toman.toLocaleString()} تومان**\n\n` +
-                              `🕒 به‌روزرسانی شد.`;
-
-            const keyboard = {
-                inline_keyboard: [
-                    [{ text: '🔄 بروزرسانی قیمت', callback_data: 'get_price' }],
-                    [{ text: '⬅️ بازگشت به منو', callback_data: 'back_home' }]
-                ]
-            };
-
-            try {
-                await bot.editMessageText(priceText, {
-                    chat_id: chatId,
-                    message_id: messageId,
-                    parse_mode: 'Markdown',
-                    reply_markup: keyboard
-                });
-            } catch (e) {
-                // خطای یکسان بودن متن نادیده گرفته می‌شود
-            }
-        } else {
-            bot.answerCallbackQuery(query.id, { text: 'خطا در دریافت قیمت!', show_alert: true });
-        }
-    } 
-    else if (query.data === 'about') {
-        const aboutText = `ℹ️ این ربات به صورت کاملاً خودکار قیمت لحظه‌ای رمزارز تون‌کوین را استعلام کرده و به تومان و دلار نمایش می‌دهد.`;
-        const keyboard = {
-            inline_keyboard: [
-                [{ text: '⬅️ بازگشت به منو', callback_data: 'back_home' }]
-            ]
-        };
-        await bot.editMessageText(aboutText, {
-            chat_id: chatId,
-            message_id: messageId,
-            parse_mode: 'Markdown',
-            reply_markup: keyboard
-        });
-    }
-    else if (query.data === 'back_home') {
-        const homeText = `🏠 منوی اصلی ربات:\nبرای دریافت قیمت روی دکمه زیر کلیک کنید:`;
-        const keyboard = {
-            inline_keyboard: [
-                [{ text: '📊 دریافت قیمت لحظه‌ای TON', callback_data: 'get_price' }],
-                [{ text: '🔄 درباره ربات', callback_data: 'about' }]
-            ]
-        };
-        await bot.editMessageText(homeText, {
-            chat_id: chatId,
-            message_id: messageId,
-            parse_mode: 'Markdown',
-            reply_markup: keyboard
-        });
-    }
-
-    bot.answerCallbackQuery(query.id);
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Arena Server running on port ${PORT}`);
 });
-
-console.log('Button-based Bot is running...');
