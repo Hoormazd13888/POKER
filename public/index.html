@@ -29,6 +29,7 @@
       <h3 style="margin-bottom: 10px;">📢 تنظیم کانال برای ارسال قیمت</h3>
       <input type="text" id="channelInput" placeholder="@ChannelUsername" />
       <button class="btn btn-success" onclick="saveChannel()">ذخیره کانال و شروع ارسال</button>
+      <div id="savedChannels" style="margin-top: 12px; font-size: 13px; color: #00E676;"></div>
     </div>
   </div>
 
@@ -57,9 +58,12 @@
           `;
         }
 
-        // اگر اشتراک فعال باشد، بخش ثبت کانال نمایش داده می‌شود
+        // اگر اشتراک فعال باشد، بخش تنظیم کانال نمایش داده می‌شود
         if (appData.subscription && appData.subscription.expireAt > Date.now()) {
           document.getElementById('channelBox').style.display = 'block';
+          if (appData.subscription.channels && appData.subscription.channels.length > 0) {
+            document.getElementById('savedChannels').innerText = 'کانال‌های متصل: ' + appData.subscription.channels.join(', ');
+          }
         }
       } catch (e) {
         console.error("Error loading data:", e);
@@ -73,7 +77,6 @@
 
       window.open(tonkeeperUrl, '_blank');
       
-      // ایجاد یک دکمه تایید پرداخت دستی برای اطمینان از بررسی تراکنش
       setTimeout(() => {
         verifyPayment(planId);
       }, 3000);
@@ -90,6 +93,7 @@
         alert(data.message);
         if (data.success) {
           document.getElementById('channelBox').style.display = 'block';
+          loadData();
         }
       } catch (e) {
         alert("خطا در بررسی پرداخت.");
@@ -111,7 +115,7 @@
         const data = await res.json();
         alert(data.message);
         if(data.success) {
-          location.reload();
+          loadData();
         }
       } catch (e) {
         alert("خطا در ذخیره کانال.");
