@@ -34,10 +34,10 @@ bot.on('callback_query', (query) => {
   const chatId = query.message.chat.id;
   if (query.data === 'start_giveaway') {
     adminStates[chatId] = {
-      step: 'BANNER_FILE',
+      step: 'BANNER_PHOTO',
       data: { participants: [], ticketsBought: 0 }
     };
-    bot.sendMessage(chatId, `🎁 **ساخت قرعه‌کشی جدید** (مرحله ۱ از ۵)\n\nلطفاً **عکس بنر** قرعه‌کشی را مستقیماً ارسال کنید:`, {
+    bot.sendMessage(chatId, `🎁 **ساخت قرعه‌کشی جدید** (مرحله ۱ از ۵)\n\nلطفاً **عکس بنر** قرعه‌کشی را مستقیماً از گالری ارسال کنید:`, {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [[{ text: '❌ لغو ساخت', callback_data: 'cancel_gw' }]]
@@ -52,32 +52,34 @@ bot.on('callback_query', (query) => {
   }
 });
 
+// دریافت عکس
+bot.on('photo', async (msg) => {
+  const chatId = msg.chat.id;
+  if (!adminStates[chatId]) return;
+  const state = adminStates[chatId];
+
+  if (state.step === 'BANNER_PHOTO') {
+    const photo = msg.photo;
+    state.data.bannerPhotoId = photo[photo.length - 1].file_id; // ذخیره فایل آیدی عکس
+    state.step = 'PRIZE';
+    
+    bot.sendMessage(chatId, `✅ عکس بنر دریافت شد.\n\n🏆 **مرحله ۲ از ۵:**\nعنوان یا نوع جایزه قرعه‌کشی را بنویسید (مثلاً: ۱۰۰ تون‌کوین):`, {
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
+    });
+  }
+});
+
+// دریافت پیام‌های متنی (مراحل بعدی)
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
-  const photo = msg.photo;
+  if (!text || text.startsWith('/')) return;
 
   if (!adminStates[chatId]) return;
   const state = adminStates[chatId];
 
-  // مرحله ۱: دریافت عکس بنر (فایل عکس یا لینک)
-  if (state.step === 'BANNER_FILE') {
-    if (photo && photo.length > 0) {
-      // ذخیره file_id عکس ارسالی کاربر
-      state.data.bannerPhotoId = photo[photo.length - 1].file_id;
-      state.step = 'PRIZE';
-      askPrize(chatId);
-    } else if (text && !text.startsWith('/')) {
-      // اگر لینک متنی فرستاد
-      state.data.bannerPhotoId = text.trim();
-      state.step = 'PRIZE';
-      askPrize(chatId);
-    } else {
-      bot.sendMessage(chatId, `⚠️ لطفاً حتماً یک **عکس** یا لینک تصویر ارسال کنید.`);
-    }
-  }
-  else if (text && text.startsWith('/')) return;
-  else if (state.step === 'PRIZE') {
+  if (state.step === 'PRIZE') {
     state.data.prize = text.trim();
     state.step = 'DESC';
     bot.sendMessage(chatId, `✅ جایزه ثبت شد.\n\n📝 **مرحله ۳ از ۵:**\nتوضیحات قرعه‌کشی را بنویسید (اگر ندارید، کلمه «رد» را بفرستید):`, {
@@ -172,13 +174,6 @@ bot.on('message', async (msg) => {
     }
   }
 });
-
-function askPrize(chatId) {
-  bot.sendMessage(chatId, `✅ بنر دریافت شد.\n\n🏆 **مرحله ۲ از ۵:**\nعنوان یا نوع جایزه قرعه‌کشی را بنویسید (مثلاً: ۱۰۰ تون‌کوین):`, {
-    parse_mode: 'Markdown',
-    reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
-  });
-}
 
 async function finishGiveaway(giveawayId) {
   const gw = giveaways[giveawayId];
