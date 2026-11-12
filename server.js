@@ -3,97 +3,120 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const crypto = require('crypto');
+const TelegramBot = require('node-telegram-bot-api');
+
+// توکن ربات تلگرام شما
+const TOKEN = '9173107929:AAG4CcOtg-8bT_4G_a4qJpN9LlJSrI7yBLg';
+
+// راه‌اندازی ربات (با پشتبانی از Webhook یا Polling)
+const bot = new TelegramBot(TOKEN, { polling: true });
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.json());
 
-// پالت رنگ‌های نئونی برای بازیکنان
-const COLORS = [
-  '#FF2E93', '#00E5FF', '#FFD600', '#00E676', 
-  '#AA00FF', '#FF6D00', '#2979FF', '#F50057'
-];
+const COLORS = ['#FF2E93', '#00E5FF', '#FFD600', '#00E676', '#AA00FF', '#FF6D00'];
+const usersBalances = {}; // موجودی والت کاربران
 
-// وضعیت فعلی اتاق بازی
-let gameState = {
-  status: 'WAITING', // WAITING | COUNTDOWN | SPINNING | RESULT
+let rouletteState = {
+  status: 'WAITING',
   timer: 15,
   pot: 0,
-  players: [], // { id, name, bet, color, percentage, startAngle, endAngle }
+  players: [],
   winner: null,
   winningAngle: 0
 };
 
 let countdownInterval = null;
 
-function recalculateAngles() {
+// دستور /start در تلگرام
+bot.onText(/\/start/, (msg) => {
+  const chatId = msg.chat.id;
+  const firstName = msg.from.first_name || 'کاربر';
+
+  // آدرس مینی‌اپ (بعد از دیپلوی روی سرور، آدرس هاست خودت رو اینجا بگذار یا از ریشه پورت استفاده کن)
+  const webAppUrl = process.env.WEB_APP_URL || 'https://your-domain.com';
+
+  bot.sendMessage(chatId, `سلام ${firstName} عزیز! 🎮\nبه ربات آرنا و رولت TON خوش آمدید. برای شروع بازی روی دکمه زیر کلیک کنید:`, {
+    reply_markup: {
+      inline_keyboard: [
+        [
+          {
+            text: '🚀 ورود به مینی‌اپ بازی',
+            web_app: { url: webAppUrl }
+          }
+        ]
+      ]
+    }
+  });
+});
+
+function recalculateRouletteAngles() {
   let currentAngle = 0;
-  gameState.players.forEach(p => {
-    p.percentage = (p.bet / gameState.pot) * 100;
-    const sliceAngle = (p.bet / gameState.pot) * 360;
+  rouletteState.players.forEach(p => {
+    p.percentage = (p.bet / rouletteState.pot) * 100;
+    const sliceAngle = (p.bet / rouletteState.pot) * 360;
     p.startAngle = currentAngle;
     p.endAngle = currentAngle + sliceAngle;
     currentAngle += sliceAngle;
   });
 }
 
-function startCountdown() {
+function startRouletteCountdown() {
   if (countdownInterval) return;
-  gameState.status = 'COUNTDOWN';
-  gameState.timer = 15;
+  rouletteState.status = 'COUNTDOWN';
+  rouletteState.timer = 15;
 
   countdownInterval = setInterval(() => {
-    gameState.timer -= 1;
-    io.emit('gameState', gameState);
+    rouletteState.timer -= 1;
+    io.emit('rouletteState', rouletteState);
 
-    if (gameState.timer <= 0) {
+    if (rouletteState.timer <= 0) {
       clearInterval(countdownInterval);
       countdownInterval = null;
-      spinWheel();
+      spinRouletteWheel();
     }
   }, 1000);
 }
 
-function spinWheel() {
-  if (gameState.players.length === 0) {
-    resetGame();
+function spinRouletteWheel() {
+  if (rouletteState.players.length === 0) {
+    resetRoulette();
     return;
   }
 
-  gameState.status = 'SPINNING';
-  
-  // انتخاب زاویه کاملاً تصادفی و امن روی سرور (0 تا 360)
+  rouletteState.status = 'SPINNING';
   const randomFraction = crypto.randomInt(0, 1000000) / 1000000;
   const targetAngle = randomFraction * 360;
-  gameState.winningAngle = targetAngle;
+  rouletteState.winningAngle = targetAngle;
 
-  // پیدا کردن برنده بر اساس زاویه
-  const winner = gameState.players.find(
+  const winner = rouletteState.players.find(
     p => targetAngle >= p.startAngle && targetAngle < p.endAngle
-  ) || gameState.players[gameState.players.length - 1];
+  ) || rouletteState.players[rouletteState.players.length - 1];
 
-  gameState.winner = winner;
+  rouletteState.winner = winner;
+  
+  if (!usersBalances[winner.id]) usersBalances[winner.id] = 0;
+  usersBalances[winner.id] += rouletteState.pot;
+
   io.emit('spinStart', {
     winningAngle: targetAngle,
     winner: winner,
-    pot: gameState.pot
+    pot: rouletteState.pot
   });
 
-  // 5 ثانیه انیمیشن چرخش + 4 ثانیه نمایش برنده
   setTimeout(() => {
-    gameState.status = 'RESULT';
-    io.emit('gameState', gameState);
-
-    setTimeout(() => {
-      resetGame();
-    }, 4000);
+    rouletteState.status = 'RESULT';
+    io.emit('rouletteState', rouletteState);
+    setTimeout(() => { resetRoulette(); }, 4000);
   }, 5000);
 }
 
-function resetGame() {
-  gameState = {
+function resetRoulette() {
+  rouletteState = {
     status: 'WAITING',
     timer: 15,
     pot: 0,
@@ -101,27 +124,33 @@ function resetGame() {
     winner: null,
     winningAngle: 0
   };
-  io.emit('gameState', gameState);
+  io.emit('rouletteState', rouletteState);
 }
 
 io.on('connection', (socket) => {
-  // ارسال وضعیت فعلی به کاربر جدید
-  socket.emit('gameState', gameState);
+  socket.emit('rouletteState', rouletteState);
 
-  // ورود یا افزایش شرط بازیکن
-  socket.on('placeBet', ({ userId, username, amount }) => {
+  socket.on('placeRouletteBet', ({ userId, username, amount }) => {
     const betAmount = parseFloat(amount);
     if (isNaN(betAmount) || betAmount <= 0) return;
-    if (gameState.status === 'SPINNING' || gameState.status === 'RESULT') return;
+    
+    if (!usersBalances[userId]) usersBalances[userId] = 5.0; // هدیه اولیه تست
+    if (usersBalances[userId] < betAmount) {
+      socket.emit('errorMsg', 'موجودی والت کافی نیست! لطفاً واریز کنید.');
+      return;
+    }
 
-    let existingPlayer = gameState.players.find(p => p.id === userId);
+    usersBalances[userId] -= betAmount;
+    socket.emit('balanceUpdate', usersBalances[userId]);
+
+    let existingPlayer = rouletteState.players.find(p => p.id === userId);
     if (existingPlayer) {
       existingPlayer.bet = parseFloat((existingPlayer.bet + betAmount).toFixed(4));
     } else {
-      const color = COLORS[gameState.players.length % COLORS.length];
-      gameState.players.push({
+      const color = COLORS[rouletteState.players.length % COLORS.length];
+      rouletteState.players.push({
         id: userId,
-        name: username || `Player_${userId.slice(-4)}`,
+        name: username || `User_${userId.slice(-4)}`,
         bet: betAmount,
         color: color,
         percentage: 0,
@@ -130,19 +159,34 @@ io.on('connection', (socket) => {
       });
     }
 
-    gameState.pot = parseFloat((gameState.pot + betAmount).toFixed(4));
-    recalculateAngles();
+    rouletteState.pot = parseFloat((rouletteState.pot + betAmount).toFixed(4));
+    recalculateRouletteAngles();
 
-    // شروع تایمر ۱۵ ثانیه‌ای به محض ورود اولین نفر
-    if (gameState.status === 'WAITING' && gameState.players.length >= 1) {
-      startCountdown();
+    if (rouletteState.status === 'WAITING' && rouletteState.players.length >= 1) {
+      startRouletteCountdown();
     }
 
-    io.emit('gameState', gameState);
+    io.emit('rouletteState', rouletteState);
+  });
+
+  socket.on('getWallet', (userId) => {
+    if (!usersBalances[userId]) usersBalances[userId] = 5.0;
+    socket.emit('balanceUpdate', usersBalances[userId]);
+  });
+
+  socket.on('walletAction', ({ userId, type, amount }) => {
+    if (!usersBalances[userId]) usersBalances[userId] = 5.0;
+    const val = parseFloat(amount);
+    if (type === 'deposit') {
+      usersBalances[userId] += val;
+    } else if (type === 'withdraw' && usersBalances[userId] >= val) {
+      usersBalances[userId] -= val;
+    }
+    socket.emit('balanceUpdate', usersBalances[userId]);
   });
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Arena Server running on port ${PORT}`);
+  console.log(`Bot and Server running on port ${PORT}`);
 });
