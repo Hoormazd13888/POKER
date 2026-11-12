@@ -158,5 +158,155 @@
   <div id="walletView" class="view">
     <div class="wallet-box">
       <div style="color: #94a3b8; font-size: 14px; margin-bottom: 6px;">موجودی حساب شما</div>
-      <div style="font-size: 28px; font-weight: bold; color
-        
+      <div style="font-size: 28px; font-weight: bold; color: #00E5FF;" id="walletBalanceVal">0.00 TON</div>
+      <div class="wallet-btns">
+        <button class="wallet-action-btn deposit-btn" onclick="walletAction('deposit', 5)">+ واریز ۵ تون</button>
+        <button class="wallet-action-btn withdraw-btn" onclick="walletAction('withdraw', 2)">برداشت ۲ تون</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- تب لیدربرد -->
+  <div id="leaderboardView" class="view">
+    <h2 style="margin-bottom: 14px;">🏆 برترین‌های هفته</h2>
+    <div style="width:100%; display:flex; flex-direction:column; gap:8px;">
+      <div class="player-card" style="border-right-color: #FFD600;"><span>1. 👑 CryptoKing</span><strong>142.5 TON</strong></div>
+      <div class="player-card" style="border-right-color: #C0C0C0;"><span>2. 🥈 TonMaster</span><strong>98.0 TON</strong></div>
+      <div class="player-card" style="border-right-color: #CD7F32;"><span>3. 🥉 LuckyPlayer</span><strong>64.2 TON</strong></div>
+    </div>
+  </div>
+
+  <div class="winner-banner" id="winnerBanner">
+    <h2 style="color:#00E676; margin-bottom:6px;">🎉 برنده مشخص شد!</h2>
+    <p id="winnerText" style="font-size:16px; font-weight:bold;"></p>
+  </div>
+
+  <!-- نوار ناوبری پایین -->
+  <div class="nav-bar">
+    <div class="nav-item active" onclick="switchTab('homeView', this)"><span>🏠</span>خانه</div>
+    <div class="nav-item" onclick="switchTab('arenaView', this)"><span>⚔️</span>آرنا</div>
+    <div class="nav-item" onclick="switchTab('rouletteView', this)"><span>🎯</span>رولت</div>
+    <div class="nav-item" onclick="switchTab('walletView', this)"><span>💳</span>والت</div>
+    <div class="nav-item" onclick="switchTab('leaderboardView', this)"><span>🏆</span>لیدربرد</div>
+  </div>
+
+  <script>
+    const socket = io();
+    const tg = window.Telegram?.WebApp;
+    if (tg) tg.expand();
+
+    const user = tg?.initDataUnsafe?.user || {
+      id: 'user_' + Math.floor(Math.random() * 10000),
+      first_name: 'کاربر_تست'
+    };
+
+    socket.emit('getWallet', user.id);
+
+    socket.on('balanceUpdate', (bal) => {
+      document.getElementById('userBalance').innerText = `${bal.toFixed(2)} TON`;
+      document.getElementById('walletBalanceVal').innerText = `${bal.toFixed(2)} TON`;
+    });
+
+    socket.on('errorMsg', (msg) => { alert(msg); });
+
+    function switchTab(viewId, el) {
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      document.getElementById(viewId).classList.add('active');
+      if (el) {
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        el.classList.add('active');
+      }
+    }
+
+    // --- رولت ---
+    const canvas = document.getElementById('wheelCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function drawWheel(players) {
+      ctx.clearRect(0, 0, 260, 260);
+      if (!players || players.length === 0) {
+        ctx.beginPath(); ctx.arc(130, 130, 125, 0, Math.PI * 2);
+        ctx.fillStyle = '#161d2d'; ctx.fill(); return;
+      }
+      players.forEach(p => {
+        const startRad = ((p.startAngle - 90) * Math.PI) / 180;
+        const endRad = ((p.endAngle - 90) * Math.PI) / 180;
+        ctx.beginPath(); ctx.moveTo(130, 130); ctx.arc(130, 130, 125, startRad, endRad);
+        ctx.closePath(); ctx.fillStyle = p.color; ctx.fill();
+        ctx.lineWidth = 2; ctx.strokeStyle = '#0b0e14'; ctx.stroke();
+      });
+    }
+
+    socket.on('rouletteState', (state) => {
+      document.getElementById('potAmount').innerText = `${state.pot} TON`;
+      if (state.players.length < 2) {
+        document.getElementById('timerDisplay').innerText = 'منتظر نفر دوم...';
+        document.getElementById('centerStatus').innerText = 'نفر دوم؟';
+      } else if (state.status === 'COUNTDOWN') {
+        document.getElementById('timerDisplay').innerText = `شروع در ${state.timer}s`;
+        document.getElementById('centerStatus').innerText = `${state.timer}s`;
+      }
+      if (state.status !== 'SPINNING') drawWheel(state.players);
+
+      const list = document.getElementById('playersList');
+      list.innerHTML = '';
+      state.players.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'player-card';
+        div.style.borderRightColor = p.color;
+        div.innerHTML = `<div><strong>${p.name}</strong> <span style="font-size:12px; color:#94a3b8;">(${p.bet} TON)</span></div><div style="font-weight:bold; color:${p.color};">${p.percentage.toFixed(1)}%</div>`;
+        list.appendChild(div);
+      });
+    });
+
+    socket.on('spinStart', ({ winningAngle, winner, pot }) => {
+      document.getElementById('timerDisplay').innerText = 'چرخش...';
+      const finalAngle = (360 * 6) + (360 - winningAngle);
+      canvas.style.transition = 'transform 4.8s cubic-bezier(0.15, 0.85, 0.25, 1)';
+      canvas.style.transform = `rotate(${finalAngle}deg)`;
+      setTimeout(() => {
+        document.getElementById('winnerText').innerText = `${winner.name} برنده ${pot} TON شد!`;
+        document.getElementById('winnerBanner').style.display = 'block';
+      }, 4900);
+    });
+
+    // --- آرنا ---
+    socket.on('arenaState', (state) => {
+      document.getElementById('arenaPot').innerText = `${state.pot} TON`;
+      if (state.players.length < 2) {
+        document.getElementById('arenaTimer').innerText = 'منتظر نفر دوم...';
+        document.getElementById('arenaCenterStatus').innerText = 'نفر دوم؟';
+      } else if (state.status === 'COUNTDOWN') {
+        document.getElementById('arenaTimer').innerText = `شروع در ${state.timer}s`;
+        document.getElementById('arenaCenterStatus').innerText = `${state.timer}s`;
+      }
+
+      const list = document.getElementById('arenaPlayersList');
+      list.innerHTML = '';
+      state.players.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'player-card';
+        div.style.borderRightColor = p.color;
+        div.innerHTML = `<div><strong>${p.name}</strong></div><div style="font-weight:bold; color:${p.color};">${p.bet} TON</div>`;
+        list.appendChild(div);
+      });
+    });
+
+    socket.on('arenaFinish', ({ winner, pot }) => {
+      document.getElementById('arenaTimer').innerText = 'پایان راند!';
+      setTimeout(() => {
+        document.getElementById('winnerText').innerText = `[آرنا] ${winner.name} برنده ${pot} TON شد!`;
+        document.getElementById('winnerBanner').style.display = 'block';
+      }, 2000);
+    });
+
+    function sendBet(amount) { socket.emit('placeRouletteBet', { userId: String(user.id), username: user.first_name, amount }); }
+    function sendCustomBet() { const val = parseFloat(document.getElementById('betInput').value); if(val>0){sendBet(val); document.getElementById('betInput').value='';} }
+
+    function sendArenaBet(amount) { socket.emit('placeArenaBet', { userId: String(user.id), username: user.first_name, amount }); }
+    function sendCustomArenaBet() { const val = parseFloat(document.getElementById('arenaInput').value); if(val>0){sendArenaBet(val); document.getElementById('arenaInput').value='';} }
+
+    function walletAction(type, amount) { socket.emit('walletAction', { userId: String(user.id), type, amount }); }
+  </script>
+</body>
+</html>
