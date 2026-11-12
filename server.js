@@ -53,7 +53,6 @@ function getOrCreateUser(id, name = 'بازیکن', username = '') {
     return db.users[id];
 }
 
-// --- API های مینی‌اپ ---
 app.post('/api/sync', (req, res) => {
     const { id, first_name, username } = req.body;
     if (!id) return res.status(400).json({ error: 'Invalid User' });
@@ -78,31 +77,19 @@ app.post('/api/sync', (req, res) => {
     });
 });
 
-// شبیه‌سازی بررسی و تایید اتوماتیک تراکنش (یا ارسال به ادمین بعد از ۵ دقیقه)
 app.post('/api/verify-deposit', (req, res) => {
     const { id, amount } = req.body;
     const user = db.users[id];
     if (!user) return res.status(404).json({ error: 'کاربر یافت نشد' });
 
-    // فرض بررسی موفق آنی در نمونه، در صورت نیاز به API بلاکچین اینجا متصل می‌شود
-    const success = true; 
-
-    if (success) {
-        user.balance += Number(amount);
-        user.history.unshift(`+${amount} TON (واریز موفق و تایید شد)`);
-        db.transactions.push({ userId: id, amount, type: 'واریز', status: 'تایید شده', date: new Date().toLocaleDateString('fa-IR') });
-        res.json({ success: true, message: 'واریز شما با موفقیت تایید و به موجودی اضافه شد!', user });
-    } else {
-        // اگر بعد از 5 دقیقه تایید نشد
-        setTimeout(() => {
-            db.transactions.push({ userId: id, amount, type: 'واریز', status: 'در انتظار بررسی ادمین', date: new Date().toLocaleDateString('fa-IR') });
-        }, 300000);
-        res.json({ success: false, message: 'تراکنش پیدا نشد. به ادمین برای بررسی ارسال شد.' });
-    }
+    user.balance += Number(amount);
+    user.history.unshift(`+${amount} TON (واریز تایید شد)`);
+    db.transactions.push({ userId: id, amount, type: 'واریز', status: 'تایید شده', date: new Date().toLocaleDateString('fa-IR') });
+    res.json({ success: true, message: 'واریز شما با موفقیت تایید و به موجودی اضافه شد!', user });
 });
 
 app.post('/api/withdraw', (req, res) => {
-    const { id, amount, wallet } = req.body;
+    const { id, amount } = req.body;
     const user = db.users[id];
     if (!user || user.balance < amount) return res.status(400).json({ error: 'موجودی کافی نیست.' });
 
@@ -157,7 +144,7 @@ app.post('/api/arena/join', (req, res) => {
 app.post('/api/admin/data', (req, res) => {
     const { adminId } = req.body;
     if (!db.admins.includes(Number(adminId))) return res.status(403).json();
-    res.json({ settings: db.settings, tournaments: db.tournaments, tasks: db.tasks, transactions: db.transactions });
+    res.json({ settings: db.settings, tournaments: db.tournaments, tasks: db.tasks });
 });
 
 app.post('/api/admin/update-settings', (req, res) => {
@@ -167,20 +154,6 @@ app.post('/api/admin/update-settings', (req, res) => {
     db.settings.dailyActive = dailyActive;
     db.settings.dailyAmount = Number(dailyAmount);
     res.json({ success: true });
-});
-
-app.post('/api/admin/create-tournament', (req, res) => {
-    const { adminId, title, prize, rules } = req.body;
-    if (!db.admins.includes(Number(adminId))) return res.status(403).json();
-    db.tournaments.push({ id: Date.now(), title, prize, rules, status: 'فعال' });
-    res.json({ success: true, tournaments: db.tournaments });
-});
-
-app.post('/api/admin/add-task', (req, res) => {
-    const { adminId, title, reward } = req.body;
-    if (!db.admins.includes(Number(adminId))) return res.status(403).json();
-    db.tasks.push({ id: Date.now(), title, reward: Number(reward) });
-    res.json({ success: true, tasks: db.tasks });
 });
 
 bot.onText(/\/admin/, (msg) => {
