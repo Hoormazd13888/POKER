@@ -10,13 +10,17 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// دیتابیس حافظه موقت با قابلیت ذخیره وضعیت ادمین و کانال‌ها
 let db = {
   adminId: null, 
-  adminWallet: 'UQD...AdminWalletAddressHere...', // آدرس والت ادمین برای دریافت تون
+  adminWallet: 'UQD...AdminWalletAddressHere...', // آدرس والت ادمین پیش‌فرض
   channels: [], 
   subscriptions: {}, 
   prices: { 1: { days: 7, price: 1 }, 2: { days: 30, price: 3 } }
 };
+
+// وضعیت موقت برای دریافت متن از ادمین (مثل ارسال آدرس والت جدید)
+let adminStates = {};
 
 async function getTonPrices() {
   try {
@@ -84,18 +88,39 @@ bot.on('callback_query', async (query) => {
       reply_markup: {
         inline_keyboard: [
           [{ text: '📝 تنظیم والت دریافت تون', callback_data: 'set_wallet' }],
-          [{ text: '📢 مدیریت کانال‌ها', callback_data: 'manage_channels' }]
+          [{ text: '📢 لیست کانال‌ها', callback_data: 'list_channels' }]
         ]
       }
     });
+  } else if (query.data === 'set_wallet') {
+    if (userId !== db.adminId) return;
+    adminStates[userId] = 'WAITING_FOR_WALLET';
+    bot.sendMessage(chatId, `لطفاً آدرس جدید والت ادمین خود را ارسال کنید:`);
+  } else if (query.data === 'list_channels') {
+    if (userId !== db.adminId) return;
+    const list = db.channels.length > 0 ? db.channels.join('\n') : 'هیچ کانالی ثبت نشده است.';
+    bot.sendMessage(chatId, `📢 **لیست کانال‌های متصل:**\n\n${list}`, { parse_mode: 'Markdown' });
   }
 });
 
-// ارسال خودکار قیمت به کانال همراه با تاریخ و ساعت ایران و ایموجی وضعیت
+// دریافت پیام‌های متنی ادمین (برای تنظیم والت)
+bot.on('message', (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  const text = msg.text;
+
+  if (adminStates[userId] === 'WAITING_FOR_WALLET' && text) {
+    db.adminWallet = text.trim();
+    delete adminStates[userId];
+    bot.sendMessage(chatId, `✅ والت ادمین با موفقیت به \`${db.adminWallet}\` تغییر یافت.`, { parse_mode: 'Markdown' });
+  }
+});
+
+// ارسال خودکار قیمت به کانال‌ها
 setInterval(async () => {
   const now = Date.now();
   const { usd, tomman } = await getTonPrices();
-  const emoji = '🟢'; // 🟢 برای صعودی/ثابت، 🔴 برای نزولی
+  const emoji = '🟢'; 
 
   for (const [userId, sub] of Object.entries(db.subscriptions)) {
     if (sub.expireAt > now) {
@@ -116,7 +141,7 @@ setInterval(async () => {
 
 app.get('/api/data/:userId', (req, res) => {
   const userId = req.params.userId;
-  const sub = db.subscriptions[userId] || { active: false };
+  const sub = db.subscriptions[userId] || { expireAt: 0, channels: [] };
   res.json({
     wallet: db.adminWallet,
     plans: db.prices,
@@ -142,12 +167,6 @@ app.post('/api/verify-payment', async (req, res) => {
     bot.sendMessage(userId, `✅ پرداخت شما با موفقیت تایید شد!\nاشتراک ${plan.days} روزه شما فعال گردید.`);
     return res.json({ success: true, message: 'پرداخت تایید شد' });
   } else {
-    setTimeout(async () => {
-      if (db.adminId && !db.subscriptions[userId]?.active) {
-        bot.sendMessage(db.adminId, `⚠️ تراکنش کاربر \`${userId}\` برای خرید پلن ${plan.days} روزه تایید نشد یا نیاز به بررسی دستی دارد.`);
-      }
-    }, 5 * 60 * 1000);
-
     return res.json({ success: false, message: 'تراکنش هنوز در بلاک‌چین تایید نشده است. لطفاً چند دقیقه دیگر تلاش کنید.' });
   }
 });
@@ -155,7 +174,7 @@ app.post('/api/verify-payment', async (req, res) => {
 app.post('/api/set-channel', (req, res) => {
   const { userId, channelUsername } = req.body;
   if (!db.subscriptions[userId] || db.subscriptions[userId].expireAt < Date.now()) {
-    return res.status(403).json({ success: false, message: 'اشتراک فعال ندارید!' });
+    return res.status(403).json({ success: false, message: 'اشتراک فعال ندارید یا اشتراک شما منقضی شده است!' });
   }
 
   if (!db.subscriptions[userId].channels.includes(channelUsername)) {
@@ -163,7 +182,7 @@ app.post('/api/set-channel', (req, res) => {
     if (!db.channels.includes(channelUsername)) db.channels.push(channelUsername);
   }
 
-  res.json({ success: true, message: 'کانال با موفقیت ثبت شد' });
+  res.json({ success: true, message: 'کانال با موفقیت ثبت شد و ارسال قیمت آغاز خواهد شد' });
 });
 
 const PORT = process.env.PORT || 3000;
