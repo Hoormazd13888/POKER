@@ -52,7 +52,7 @@
 
     .wallet-box { background: #130b26; border: 1px solid #281750; width: 100%; padding: 20px; border-radius: 16px; text-align: center; margin-bottom: 16px; }
     .wallet-btns { display: flex; gap: 10px; margin-top: 14px; }
-    .wallet-btn { flex: 1; padding: 12px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; }
+    .wallet-btn { width: 100%; padding: 12px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; margin-top: 8px; }
     .deposit-btn { background: #00E676; color: #000; }
     .withdraw-btn { background: #FF3D71; color: #fff; }
 
@@ -72,7 +72,304 @@
     <div class="balance-badge" id="userBalance">💎 0 TON</div>
   </div>
 
-  <!-- تب خانه -->
   <div id="homeView" class="view active">
-    <div class="home-banner">⚡ به آرنا خوش
+    <div class="home-banner">⚡ به آرنا خوش آمدید!<br>جایی برای برد بزرگ با تون‌کوین[span_1](start_span)[span_1](end_span)</div>
+    <div class="game-cards-grid">
+      <div class="game-card card-arena" onclick="switchTab('arenaView')">
+        <div>
+          <div class="card-title">⚔️ آرنا</div>
+          <div class="card-desc">نبرد مربعی با حرکت توپ و درصد برد[span_2](start_span)[span_2](end_span)</div>
+        </div>
+        <div style="font-size: 24px;">➡️</div>
+      </div>
+      <div class="game-card card-wheel" onclick="switchTab('rouletteView')">
+        <div>
+          <div class="card-title">🎯 رولت</div>
+          <div class="card-desc">چرخ شانس کلاسیک با کسر ۵٪ مالیات[span_3](start_span)[span_3](end_span)</div>
+        </div>
+        <div style="font-size: 24px;">➡️</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="rouletteView" class="view">
+    <div class="game-header">
+      <div>کل بانک: <span class="pot-box" id="roulettePot">0 TON</span></div>
+      <div class="timer-box" id="rouletteTimer">منتظر نفر دوم...</div>
+    </div>
+
+    <div class="wheel-container">
+      <div class="pointer"></div>
+      <canvas id="wheelCanvas" width="260" height="260"></canvas>
+    </div>
+
+    <div class="finance-card">
+      <div class="finance-item">مالیات راند (5%):<br><strong id="rouletteTax" style="color:#FF3D71;">0 TON</strong></div>
+      <div class="finance-item">مبلغ برنده:<br><strong id="roulettePrize" style="color:#00E676;">0 TON</strong></div>
+    </div>
+
+    <div class="controls">
+      <div class="bet-presets">
+        <button class="preset-btn" onclick="sendRouletteBet(10)">10 TON</button>
+        <button class="preset-btn" onclick="sendRouletteBet(50)">50 TON</button>
+        <button class="preset-btn" onclick="sendRouletteBet(100)">100 TON</button>
+        <button class="preset-btn" onclick="sendRouletteBet(500)">500 TON</button>
+      </div>
+      <div class="custom-bet">
+        <input type="number" id="rouletteInput" min="1" placeholder="مبلغ دلخواه (TON)" />
+        <button class="join-btn" onclick="sendCustomRouletteBet()">ورود</button>
+      </div>
+    </div>
+
+    <div class="players-list" id="roulettePlayersList"></div>
+    <div class="back-link" onclick="switchTab('homeView')">← بازگشت به منو</div>
+  </div>
+
+  <div id="arenaView" class="view">
+    <div class="game-header">
+      <div>کل بانک: <span class="pot-box" id="arenaPot">0 TON</span></div>
+      <div class="timer-box" id="arenaTimer">منتظر نفر دوم...</div>
+    </div>
+
+    <div class="arena-box" id="arenaBox">
+      <div class="ball" id="arenaBall" style="top: 50%; left: 50%;"></div>
+      <div style="position: absolute; font-size: 13px; font-weight: bold; color: rgba(255,255,255,0.7);" id="arenaCenterText">آماده راند</div>
+    </div>
+
+    <div class="finance-card">
+      <div class="finance-item">مالیات راند (5%):<br><strong id="arenaTax" style="color:#FF3D71;">0 TON</strong></div>
+      <div class="finance-item">مبلغ برنده:<br><strong id="arenaPrize" style="color:#00E676;">0 TON</strong></div>
+    </div>
+
+    <div class="controls">
+      <div class="bet-presets">
+        <button class="preset-btn" onclick="sendArenaBet(10)">10 TON</button>
+        <button class="preset-btn" onclick="sendArenaBet(50)">50 TON</button>
+        <button class="preset-btn" onclick="sendArenaBet(100)">100 TON</button>
+        <button class="preset-btn" onclick="sendArenaBet(500)">500 TON</button>
+      </div>
+      <div class="custom-bet">
+        <input type="number" id="arenaInput" min="1" placeholder="مبلغ دلخواه (TON)" />
+        <button class="join-btn" onclick="sendCustomArenaBet()">ورود به راند</button>
+      </div>
+    </div>
+
+    <div class="players-list" id="arenaPlayersList"></div>
+    <div class="back-link" onclick="switchTab('homeView')">← بازگشت به منو</div>
+  </div>
+
+  <div id="walletView" class="view">
+    <div class="wallet-box">
+      <div style="color: #94a3b8; font-size: 14px; margin-bottom: 6px;">موجودی حساب شما</div>
+      <div style="font-size: 28px; font-weight: bold; color: #00E5FF;" id="walletBalanceVal">0 TON</div>
       
+      <div style="margin-top: 16px;">
+        <input type="number" id="depositAmount" min="1" placeholder="مبلغ واریز (TON)" style="margin-bottom:8px;" />
+        <button class="wallet-btn deposit-btn" onclick="openDeposit()">واریز مستقیم با Tonkeeper 🚀</button>
+      </div>
+
+      <div style="margin-top: 20px; border-top: 1px solid #281750; padding-top: 14px;">
+        <input type="number" id="withdrawAmount" min="1" placeholder="مبلغ برداشت (TON)" style="margin-bottom:8px;" />
+        <input type="text" id="withdrawAddress" placeholder="آدرس والت تونکیپر شما" style="margin-bottom:8px;" />
+        <button class="wallet-btn withdraw-btn" onclick="requestWithdraw()">ثبت درخواست برداشت</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="winner-banner" id="winnerBanner">
+    <h2 style="color:#00E676; margin-bottom:6px;">🎉 برنده راند!</h2>
+    <p id="winnerText" style="font-size:15px; font-weight:bold;"></p>
+  </div>
+
+  <div class="nav-bar">
+    <div class="nav-item active" onclick="switchTab('homeView', this)"><span>🏠</span>خانه</div>
+    <div class="nav-item" onclick="switchTab('arenaView', this)"><span>⚔️</span>آرنا</div>
+    <div class="nav-item" onclick="switchTab('rouletteView', this)"><span>🎯</span>رولت</div>
+    <div class="nav-item" onclick="switchTab('walletView', this)"><span>💳</span>کیف پول</div>
+  </div>
+
+  <script>
+    const socket = io();
+    const tg = window.Telegram?.WebApp;
+    if (tg) tg.expand();
+
+    const user = tg?.initDataUnsafe?.user || {
+      id: '123456789',
+      first_name: 'Player_Test',
+      photo_url: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f464.png'
+    };
+
+    let serverWallet = '';
+
+    socket.emit('getData', user.id);
+
+    socket.on('initData', (data) => {
+      serverWallet = data.adminWallet;
+      updateBalance(data.balance);
+    });
+
+    socket.on('balanceUpdate', (bal) => {
+      updateBalance(bal);
+    });
+
+    socket.on('successMsg', (msg) => { alert(msg); });
+    socket.on('errorMsg', (msg) => { alert(msg); });
+
+    function updateBalance(bal) {
+      document.getElementById('userBalance').innerText = `💎 ${bal.toLocaleString()} TON`;
+      document.getElementById('walletBalanceVal').innerText = `${bal.toLocaleString()} TON`;
+    }
+
+    function switchTab(viewId, el) {
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      document.getElementById(viewId).classList.add('active');
+      if (el) {
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        el.classList.add('active');
+      }
+    }
+
+    function openDeposit() {
+      const amount = parseFloat(document.getElementById('depositAmount').value);
+      if (!amount || amount <= 0) { alert('مبلغ معتبر وارد کنید'); return; }
+
+      const memo = user.id;
+      const nanoTon = amount * 1e9;
+      const tonkeeperUrl = `https://app.tonkeeper.com/transfer/${serverWallet}?amount=${nanoTon}&text=${memo}`;
+
+      window.open(tonkeeperUrl, '_blank');
+      alert('پس از تایید تراکنش در تونکیپر، موجودی شما ثبت می‌شود.');
+    }
+
+    function requestWithdraw() {
+      const amount = parseFloat(document.getElementById('withdrawAmount').value);
+      const address = document.getElementById('withdrawAddress').value.trim();
+      if (!amount || amount <= 0 || !address) { alert('لطفاً مبلغ و آدرس والت را وارد کنید.'); return; }
+
+      socket.emit('withdrawRequest', { userId: String(user.id), username: user.first_name, amount, address });
+      document.getElementById('withdrawAmount').value = '';
+      document.getElementById('withdrawAddress').value = '';
+    }
+
+    const canvas = document.getElementById('wheelCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function drawWheel(players) {
+      ctx.clearRect(0, 0, 260, 260);
+      if (!players || players.length === 0) {
+        ctx.beginPath(); ctx.arc(130, 130, 125, 0, Math.PI * 2);
+        ctx.fillStyle = '#130b26'; ctx.fill(); return;
+      }
+      players.forEach(p => {
+        const startRad = ((p.startAngle - 90) * Math.PI) / 180;
+        const endRad = ((p.endAngle - 90) * Math.PI) / 180;
+        ctx.beginPath(); ctx.moveTo(130, 130); ctx.arc(130, 130, 125, startRad, endRad);
+        ctx.closePath(); ctx.fillStyle = p.color; ctx.fill();
+        ctx.lineWidth = 2; ctx.strokeStyle = '#080511'; ctx.stroke();
+      });
+    }
+
+    socket.on('rouletteState', (state) => {
+      document.getElementById('roulettePot').innerText = `${state.pot} TON`;
+      document.getElementById('rouletteTax').innerText = `${state.tax} TON`;
+      document.getElementById('roulettePrize').innerText = `${state.finalPrize} TON`;
+
+      if (state.players.length < 2) {
+        document.getElementById('rouletteTimer').innerText = 'منتظر نفر دوم...';
+      } else if (state.status === 'COUNTDOWN') {
+        document.getElementById('rouletteTimer').innerText = `شروع: ${state.timer}s`;
+      }
+      if (state.status !== 'SPINNING') drawWheel(state.players);
+
+      const list = document.getElementById('roulettePlayersList');
+      list.innerHTML = '';
+      state.players.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'player-card';
+        div.style.borderRightColor = p.color;
+        div.innerHTML = `
+          <div class="player-info">
+            <img src="${p.photo || 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f464.png'}" class="player-avatar" />
+            <div><strong>${p.name}</strong> <span style="font-size:12px; color:#94a3b8;">(${p.bet} TON)</span></div>
+          </div>
+          <div style="font-weight:bold; color:${p.color};">${p.percentage}%</div>`;
+        list.appendChild(div);
+      });
+    });
+
+    socket.on('rouletteSpinStart', ({ winningAngle, winner, prize }) => {
+      document.getElementById('rouletteTimer').innerText = 'چرخش...';
+      const finalAngle = (360 * 6) + (360 - winningAngle);
+      canvas.style.transition = 'transform 4.8s cubic-bezier(0.15, 0.85, 0.25, 1)';
+      canvas.style.transform = `rotate(${finalAngle}deg)`;
+      setTimeout(() => {
+        document.getElementById('winnerText').innerText = `${winner.name} برنده ${prize} TON شد!`;
+        document.getElementById('winnerBanner').style.display = 'block';
+        setTimeout(() => document.getElementById('winnerBanner').style.display = 'none', 4000);
+      }, 4900);
+    });
+
+    socket.on('arenaState', (state) => {
+      document.getElementById('arenaPot').innerText = `${state.pot} TON`;
+      document.getElementById('arenaTax').innerText = `${state.tax} TON`;
+      document.getElementById('arenaPrize').innerText = `${state.finalPrize} TON`;
+
+      if (state.players.length < 2) {
+        document.getElementById('arenaTimer').innerText = 'منتظر نفر دوم...';
+        document.getElementById('arenaCenterText').innerText = 'حداقل ۲ نفر';
+      } else if (state.status === 'COUNTDOWN') {
+        document.getElementById('arenaTimer').innerText = `شروع: ${state.timer}s`;
+        document.getElementById('arenaCenterText').innerText = `${state.timer}s`;
+      }
+
+      const list = document.getElementById('arenaPlayersList');
+      list.innerHTML = '';
+      state.players.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'player-card';
+        div.style.borderRightColor = p.color;
+        div.innerHTML = `
+          <div class="player-info">
+            <img src="${p.photo || 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f464.png'}" class="player-avatar" />
+            <div><strong>${p.name}</strong> <span style="font-size:12px; color:#94a3b8;">(${p.bet} TON)</span></div>
+          </div>
+          <div style="font-weight:bold; color:${p.color};">${p.percentage}%</div>`;
+        list.appendChild(div);
+      });
+    });
+
+    socket.on('arenaSpinStart', ({ winner, prize }) => {
+      document.getElementById('arenaTimer').innerText = 'درحال نبرد...';
+      const ball = document.getElementById('arenaBall');
+      
+      let interval = setInterval(() => {
+        ball.style.top = Math.random() * 80 + '%';
+        ball.style.left = Math.random() * 80 + '%';
+      }, 300);
+
+      setTimeout(() => {
+        clearInterval(interval);
+        document.getElementById('winnerText').innerText = `[آرنا] ${winner.name} برنده ${prize} TON شد!`;
+        document.getElementById('winnerBanner').style.display = 'block';
+        setTimeout(() => document.getElementById('winnerBanner').style.display = 'none', 4000);
+      }, 3800);
+    });
+
+    function sendRouletteBet(amount) { 
+      socket.emit('placeRouletteBet', { userId: String(user.id), username: user.first_name, photoUrl: user.photo_url, amount }); 
+    }
+    function sendCustomRouletteBet() { 
+      const val = parseFloat(document.getElementById('rouletteInput').value); 
+      if(val > 0) { sendRouletteBet(val); document.getElementById('rouletteInput').value = ''; } 
+    }
+
+    function sendArenaBet(amount) { 
+      socket.emit('placeArenaBet', { userId: String(user.id), username: user.first_name, photoUrl: user.photo_url, amount }); 
+    }
+    function sendCustomArenaBet() { 
+      const val = parseFloat(document.getElementById('arenaInput').value); 
+      if(val > 0) { sendArenaBet(val); document.getElementById('arenaInput').value = ''; } 
+    }
+  </script>
+</body>
+</html>
