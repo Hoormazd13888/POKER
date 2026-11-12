@@ -7,8 +7,6 @@ const TelegramBot = require('node-telegram-bot-api');
 
 // توکن ربات تلگرام شما
 const TOKEN = '9173107929:AAG4CcOtg-8bT_4G_a4qJpN9LlJSrI7yBLg';
-
-// راه‌اندازی ربات (با پشتبانی از Webhook یا Polling)
 const bot = new TelegramBot(TOKEN, { polling: true });
 
 const app = express();
@@ -22,7 +20,7 @@ const COLORS = ['#FF2E93', '#00E5FF', '#FFD600', '#00E676', '#AA00FF', '#FF6D00'
 const usersBalances = {}; // موجودی والت کاربران
 
 let rouletteState = {
-  status: 'WAITING',
+  status: 'WAITING', // WAITING | COUNTDOWN | SPINNING | RESULT
   timer: 15,
   pot: 0,
   players: [],
@@ -32,12 +30,12 @@ let rouletteState = {
 
 let countdownInterval = null;
 
-// دستور /start در تلگرام
+// دستور /start در ربات تلگرام
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
   const firstName = msg.from.first_name || 'کاربر';
 
-  // آدرس مینی‌اپ (بعد از دیپلوی روی سرور، آدرس هاست خودت رو اینجا بگذار یا از ریشه پورت استفاده کن)
+  // لینک مینی‌اپ شما (آدرس سرور)
   const webAppUrl = process.env.WEB_APP_URL || 'https://your-domain.com';
 
   bot.sendMessage(chatId, `سلام ${firstName} عزیز! 🎮\nبه ربات آرنا و رولت TON خوش آمدید. برای شروع بازی روی دکمه زیر کلیک کنید:`, {
@@ -134,7 +132,7 @@ io.on('connection', (socket) => {
     const betAmount = parseFloat(amount);
     if (isNaN(betAmount) || betAmount <= 0) return;
     
-    if (!usersBalances[userId]) usersBalances[userId] = 5.0; // هدیه اولیه تست
+    if (!usersBalances[userId]) usersBalances[userId] = 5.0; // هدیه تست اولیه
     if (usersBalances[userId] < betAmount) {
       socket.emit('errorMsg', 'موجودی والت کافی نیست! لطفاً واریز کنید.');
       return;
@@ -188,5 +186,5 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Bot and Server running on port ${PORT}`);
+  console.log(`Server and Bot running on port ${PORT}`);
 });
