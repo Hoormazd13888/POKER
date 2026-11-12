@@ -17,20 +17,18 @@ app.use(express.json());
 
 const PLAYER_COLORS = ['#00E5FF', '#FF2E93', '#FFD600', '#00E676', '#AA00FF', '#FF6D00'];
 const usersBalances = {};
-let adminWallet = 'UQD...AdminWalletAddressHere...'; // والت ادمین برای واریزها
+let adminWallet = 'UQD...AdminWalletAddressHere...'; // والت ادمین
 let adminId = null;
 
-// وضعیت رولت
 let rouletteState = { status: 'WAITING', timer: 15, pot: 0, tax: 0, finalPrize: 0, players: [], winner: null, winningAngle: 0 };
 let rouletteInterval = null;
 
-// وضعیت آرنا
-let arenaState = { status: 'WAITING', timer: 15, pot: 0, tax: 0, finalPrize: 0, players: [], winner: null, ballPos: { x: 50, y: 50 } };
+let arenaState = { status: 'WAITING', timer: 15, pot: 0, tax: 0, finalPrize: 0, players: [], winner: null };
 let arenaInterval = null;
 
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
-  if (!adminId) adminId = chatId; // اولین کسی که /start بزند ادمین می‌شود
+  if (!adminId) adminId = chatId;
   const firstName = msg.from.first_name || 'کاربر';
   const webAppUrl = 'https://poker-xqj6.onrender.com/';
 
@@ -54,16 +52,8 @@ bot.on('callback_query', async (query) => {
       return bot.answerCallbackQuery(query.id, { text: 'شما ادمین نیستید!', show_alert: true });
     }
     bot.sendMessage(chatId, `⚙️ **پنل مدیریت ادمین**\n\n- والت ثبت شده: \`${adminWallet}\``, {
-      parse_mode: 'Markdown',
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: '📝 تنظیم آدرس والت دریافت', callback_data: 'set_admin_wallet' }]
-        ]
-      }
+      parse_mode: 'Markdown'
     });
-  } else if (query.data === 'set_admin_wallet') {
-    bot.sendMessage(chatId, 'لطفاً آدرس جدید والت خود را بفرستید:');
-    // ذخیره موقت حالت ادمین
   }
 });
 
@@ -185,7 +175,7 @@ function spinArena() {
 }
 
 function resetArena() {
-  arenaState = { status: 'WAITING', timer: 15, pot: 0, tax: 0, finalPrize: 0, players: [], winner: null, ballPos: { x: 50, y: 50 } };
+  arenaState = { status: 'WAITING', timer: 15, pot: 0, tax: 0, finalPrize: 0, players: [], winner: null };
   io.emit('arenaState', arenaState);
 }
 
@@ -198,7 +188,6 @@ io.on('connection', (socket) => {
     socket.emit('initData', { balance: usersBalances[userId], adminWallet });
   });
 
-  // ثبت درخواست برداشت و ارسال به ادمین
   socket.on('withdrawRequest', ({ userId, username, amount, address }) => {
     const val = parseFloat(amount);
     if (!usersBalances[userId] || usersBalances[userId] < val) {
@@ -222,7 +211,7 @@ io.on('connection', (socket) => {
         }
       });
     }
-    socket.emit('successMsg', 'درخواست برداشت ثبت شد و به ادمین ارسال گردید.');
+    socket.emit('successMsg', 'درخواست برداشت ثبت شد.');
   });
 
   socket.on('placeRouletteBet', ({ userId, username, photoUrl, amount }) => {
@@ -274,23 +263,22 @@ io.on('connection', (socket) => {
   });
 });
 
-// مدیریت تایید یا رد برداشت توسط ادمین در ربات تلگرام
 bot.on('callback_query', async (query) => {
   const data = query.data;
   if (data.startsWith('w_')) {
     const parts = data.split('_');
-    const action = parts[1]; // accept یا reject
+    const action = parts[1];
     const userId = parts[2];
     const amount = parseFloat(parts[3]);
 
     if (action === 'accept') {
-      bot.sendMessage(userId, `✅ درخواست برداشت شما به مبلغ ${amount} TON توسط ادمین تایید و واریز شد!`);
-      bot.editMessageText(`✅ درخواست برداشت ${userId} (${amount} TON) تایید شد.`, { chat_id: query.message.chat.id, message_id: query.message.message_id });
+      bot.sendMessage(userId, `✅ درخواست برداشت شما به مبلغ ${amount} TON تایید و واریز شد!`);
+      bot.editMessageText(`✅ برداشت ${userId} (${amount} TON) تایید شد.`, { chat_id: query.message.chat.id, message_id: query.message.message_id });
     } else {
       if (!usersBalances[userId]) usersBalances[userId] = 0;
-      usersBalances[userId] += amount; // برگشت وجه
-      bot.sendMessage(userId, `❌ درخواست برداشت شما رد شد و ${amount} TON به موجودی شما برگشت خورد.`);
-      bot.editMessageText(`❌ درخواست برداشت ${userId} (${amount} TON) رد شد و وجه برگشت خورد.`, { chat_id: query.message.chat.id, message_id: query.message.message_id });
+      usersBalances[userId] += amount;
+      bot.sendMessage(userId, `❌ درخواست برداشت شما رد شد و ${amount} TON برگشت خورد.`);
+      bot.editMessageText(`❌ برداشت ${userId} (${amount} TON) رد شد.`, { chat_id: query.message.chat.id, message_id: query.message.message_id });
     }
   }
 });
