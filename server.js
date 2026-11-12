@@ -93,29 +93,33 @@ bot.on('callback_query', (query) => {
   }
 });
 
-bot.on('photo', async (msg) => {
-  const chatId = msg.chat.id;
-  if (chatId !== adminId || !adminStates[chatId]) return;
-  const state = adminStates[chatId];
-
-  if (state.step === 'BANNER_PHOTO') {
-    const photo = msg.photo;
-    state.data.bannerPhotoId = photo[photo.length - 1].file_id;
-    state.step = 'PRIZE';
-    
-    bot.sendMessage(chatId, `✅ عکس بنر دریافت شد.\n\n🏆 **مرحله ۲ از ۶:**\nعنوان یا نوع جایزه قرعه‌کشی را بنویسید (مثلاً: قرعه‌کشی تدی):`, {
-      parse_mode: 'Markdown',
-      reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
-    });
-  }
-});
-
+// مدیریت متمرکز و ایمن دریافت عکس بنر در مرحله اول
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
+  const userId = msg.from.id;
+
+  if (userId !== adminId) return;
+
+  // بررسی دریافت عکس در مرحله اول
+  if (adminStates[chatId] && adminStates[chatId].step === 'BANNER_PHOTO') {
+    if (msg.photo && msg.photo.length > 0) {
+      const photo = msg.photo;
+      adminStates[chatId].data.bannerPhotoId = photo[photo.length - 1].file_id;
+      adminStates[chatId].step = 'PRIZE';
+      
+      return bot.sendMessage(chatId, `✅ عکس بنر دریافت شد.\n\n🏆 **مرحله ۲ از ۶:**\nعنوان یا نوع جایزه قرعه‌کشی را بنویسید (مثلاً: قرعه‌کشی تدی):`, {
+        parse_mode: 'Markdown',
+        reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
+      });
+    } else {
+      return bot.sendMessage(chatId, `⚠️ لطفاً حتماً یک **عکس** (تصویر) بنر از گالری ارسال کنید.`);
+    }
+  }
+
   const text = msg.text;
   if (!text || text.startsWith('/')) return;
 
-  if (chatId === adminId && adminStates[chatId]) {
+  if (adminStates[chatId]) {
     const state = adminStates[chatId];
     const cleanText = text.trim();
 
@@ -202,12 +206,13 @@ bot.on('message', async (msg) => {
 
         for (const ch of channels) {
           try {
+            const captionText = `🎁 **قرعه‌کشی بزرگ: ${state.data.prize}**\n\n📝 ${state.data.description || 'بدون توضیحات'}\n\n👥 تعداد شرکت‌کنندگان: 0\n${state.data.type === 'TICKET' ? `🎫 تیکت‌ها: 0 از ${state.data.maxTickets}` : ''}`;
             const secondButtonText = state.data.type === 'TICKET' 
               ? `🎫 تیکت‌ها: 0 از ${state.data.maxTickets}` 
               : `👥 شرکت‌کنندگان: 0 نفر`;
 
             const sentMsg = await bot.sendPhoto(ch, state.data.bannerPhotoId, {
-              caption: `🎁 **قرعه‌کشی بزرگ: ${state.data.prize}**\n\n📝 ${state.data.description || 'بدون توضیحات'}\n\n👥 تعداد شرکت‌کنندگان: 0\n${state.data.type === 'TICKET' ? `🎫 تیکت‌ها: 0 از ${state.data.maxTickets}` : ''}`,
+              caption: captionText,
               parse_mode: 'Markdown',
               reply_markup: {
                 inline_keyboard: [
@@ -235,7 +240,6 @@ bot.on('message', async (msg) => {
   }
 });
 
-// ورود کاربران به ربات برای شرکت یا خرید تیکت از طریق دکمه شیشه‌ای
 bot.onText(/\/start (.+)/, async (msg, match) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
@@ -356,4 +360,3 @@ async function finishGiveaway(giveawayId) {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => { console.log(`Bot running on port ${PORT}`); });
-      
