@@ -12,26 +12,34 @@ const TOKEN = '9173107929:AAG4CcOtg-8bT_4G_a4qJpN9LlJSrI7yBLg';
 const bot = new TelegramBot(TOKEN, { polling: true });
 const WEB_APP_URL = process.env.RENDER_EXTERNAL_URL || 'https://poker.onrender.com';
 
+// ارائه خودکار فایل مانیفست TON Connect برای جلوگیری از خطای کیف پول
+app.get('/tonconnect-manifest.json', (req, res) => {
+    res.json({
+        url: WEB_APP_URL,
+        name: "POKER GIFT",
+        iconUrl: "https://ton.org/download/ton_symbol.png"
+    });
+});
+
 const db = {
     admins: [],
     users: {},
-    tournaments: [], // فقط مسابقات ایجادشده توسط ادمین
-    tasks: [],       // فقط تسک‌های ایجادشده توسط ادمین
-    bonuses: {},     // کمپین‌های بونوس
+    tournaments: [],
+    tasks: [],
+    bonuses: {},
     settings: {
-        feePercent: 5,            // مالیات هر راند بازی آرنا
-        adminWallet: 'EQD...',    // آدرس کیف پول رسمی ادمین برای واریز کاربران
-        forceChannel: '',         // جوین اجباری
-        dailyActive: false,       // وضعیت پاداش روزانه
-        dailyAmount: 0.05,        // مقدار پاداش روزانه
-        dailyResetTime: '00:00'
+        feePercent: 5,
+        adminWallet: 'EQD...WalletAddressExample...',
+        dailyActive: false,
+        dailyAmount: 0.05
     },
     activeArenaGame: {
         status: 'waiting', // waiting, countdown, spinning, finished
         timer: 15,
         players: [],
         bank: 0,
-        winner: null
+        winner: null,
+        historyText: ''
     },
     transactions: []
 };
@@ -48,20 +56,19 @@ function getOrCreateUser(id, name = 'بازیکن', username = '') {
             joinedDate: new Date().toLocaleDateString('fa-IR'),
             banned: false,
             claimedBonuses: [],
-            history: [] // فقط واریز و برداشت TON
+            history: []
         };
     }
     return db.users[id];
 }
 
-// --- API های مینی‌اپ و پنل مدیریت ---
-
+// --- API های مینی‌اپ ---
 app.post('/api/sync', (req, res) => {
     const { id, first_name, username } = req.body;
     if (!id) return res.status(400).json({ error: 'Invalid User' });
 
     const user = getOrCreateUser(id, first_name, username);
-    if (user.banned) return res.status(403).json({ error: 'حساب شما مسدود است.' });
+    if (user.banned) return res.status(403).json({ error: 'حساب مسدود است.' });
 
     const leaderboard = Object.values(db.users)
         .sort((a, b) => b.balance - a.balance)
@@ -80,7 +87,6 @@ app.post('/api/sync', (req, res) => {
     });
 });
 
-// واریز TON (ثبت تراکنش)
 app.post('/api/deposit', (req, res) => {
     const { id, amount, txHash } = req.body;
     const user = db.users[id];
@@ -88,13 +94,11 @@ app.post('/api/deposit', (req, res) => {
 
     const txId = txHash || 'TX_' + Date.now();
     db.transactions.push({ id: txId, userId: id, type: 'واریز TON', amount, status: 'تایید شده', date: new Date().toLocaleDateString('fa-IR') });
-    
     user.balance += Number(amount);
-    user.history.unshift(`+${amount} TON (واریز)`);
+    user.history.unshift(`+${amount} TON (واریز موفق)`);
     res.json({ success: true, user });
 });
 
-// درخواست برداشت TON
 app.post('/api/withdraw', (req, res) => {
     const { id, amount, wallet } = req.body;
     const user = db.users[id];
@@ -102,21 +106,25 @@ app.post('/api/withdraw', (req, res) => {
 
     user.balance -= Number(amount);
     db.transactions.push({ userId: id, type: 'برداشت TON', amount, wallet, status: 'در حال بررسی', date: new Date().toLocaleDateString('fa-IR') });
-    user.history.unshift(`-${amount} TON (برداشت)`);
+    user.history.unshift(`-${amount} TON (درخواست برداشت)`);
     res.json({ success: true, user });
 });
 
-// سیستم بازی ARENA با کسر مالیات ادمین
+// بازی آرنا
 app.post('/api/arena/join', (req, res) => {
     const { id, amount } = req.body;
     const user = db.users[id];
     if (!user || user.balance < amount) return res.status(400).json({ error: 'موجودی کافی نیست.' });
 
+    if (db.activeArenaGame.status === 'spinning' || db.activeArenaGame.status === 'finished') {
+        return res.status(400).json({ error: 'در حال حاضر ورود به این دست بسته شده است، چند ثانیه صبر کنید.' });
+    }
+
     user.balance -= Number(amount);
     db.activeArenaGame.bank += Number(amount);
     db.activeArenaGame.players.push({ id, name: user.name, amount });
 
-    if (db.activeArenaGame.status === 'waiting' && db.activeArenaGame.players.length === 1) {
+    if (db.activeArenaGame.status === 'waiting' && db.activeArenaGame.players.length >= 1) {
         db.activeArenaGame.status = 'countdown';
         db.activeArenaGame.timer = 15;
         
@@ -137,7 +145,11 @@ app.post('/api/arena/join', (req, res) => {
                         db.users[winner.id].wins += 1;
                         db.activeArenaGame.winner = winner.name;
                         db.activeArenaGame.status = 'finished';
-                        db.activeArenaGame.historyText = `برنده: ${winner.name} (${finalPrize.toFixed(2)} TON)`;
+                        db.activeArenaGame.historyText = `👑 برنده: ${winner.name} (${finalPrize.toFixed(2)} 💎)`;
+                        
+                        setTimeout(() => {
+                            db.activeArenaGame = { status: 'waiting', timer: 15, players: [], bank: 0, winner: null, historyText: '' };
+                        }, 5000);
                     }
                 }, 4000);
             }
@@ -146,25 +158,16 @@ app.post('/api/arena/join', (req, res) => {
     res.json({ success: true, arena: db.activeArenaGame, user });
 });
 
-// --- پنل مدیریت ادمین ---
+// پنل مدیریت ادمین
 app.post('/api/admin/data', (req, res) => {
     const { adminId } = req.body;
-    if (!db.admins.includes(Number(adminId))) return res.status(403).json({ error: 'Unauthorized' });
-
-    res.json({
-        settings: db.settings,
-        transactions: db.transactions,
-        usersCount: Object.keys(db.users).length,
-        tournaments: db.tournaments,
-        tasks: db.tasks,
-        usersList: Object.values(db.users)
-    });
+    if (!db.admins.includes(Number(adminId))) return res.status(403).json();
+    res.json({ settings: db.settings, tournaments: db.tournaments, tasks: db.tasks, transactions: db.transactions });
 });
 
 app.post('/api/admin/update-settings', (req, res) => {
     const { adminId, feePercent, adminWallet, dailyActive, dailyAmount } = req.body;
     if (!db.admins.includes(Number(adminId))) return res.status(403).json();
-
     db.settings.feePercent = Number(feePercent);
     db.settings.adminWallet = adminWallet;
     db.settings.dailyActive = dailyActive;
@@ -175,7 +178,6 @@ app.post('/api/admin/update-settings', (req, res) => {
 app.post('/api/admin/create-tournament', (req, res) => {
     const { adminId, title, prize, rules } = req.body;
     if (!db.admins.includes(Number(adminId))) return res.status(403).json();
-
     db.tournaments.push({ id: Date.now(), title, prize, rules, status: 'فعال' });
     res.json({ success: true, tournaments: db.tournaments });
 });
@@ -183,12 +185,10 @@ app.post('/api/admin/create-tournament', (req, res) => {
 app.post('/api/admin/add-task', (req, res) => {
     const { adminId, title, reward } = req.body;
     if (!db.admins.includes(Number(adminId))) return res.status(403).json();
-
     db.tasks.push({ id: Date.now(), title, reward: Number(reward) });
     res.json({ success: true, tasks: db.tasks });
 });
 
-// --- دستورات ربات تلگرام ---
 bot.onText(/\/admin/, (msg) => {
     const chatId = msg.chat.id;
     if (db.admins.length === 0 || db.admins.includes(chatId)) {
@@ -202,9 +202,9 @@ bot.onText(/\/admin/, (msg) => {
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
     getOrCreateUser(chatId, msg.from.first_name, msg.from.username);
-    bot.sendMessage(chatId, `♠️♥️ به پلتفرم حرفه‌ای **POKER GIFT** خوش آمدید!\n\nبرای ورود به بازی **ARENA** و مدیریت حساب روی دکمه زیر کلیک کنید:`, {
-        reply_markup: { inline_keyboard: [[{ text: '🎲 ورود به POKER GIFT', web_app: { url: WEB_APP_URL } }]] }
+    bot.sendMessage(chatId, `♠️♥️ به پلتفرم حرفه‌ای **POKER GIFT** خوش آمدید!\n\nبرای ورود به بازی **ARENA** روی دکمه زیر کلیک کنید:`, {
+        reply_markup: { inline_keyboard: [[{ text: '🎲 ورود به مینی‌اپ ARENA', web_app: { url: WEB_APP_URL } }]] }
     });
 });
 
-app.listen(PORT, () => console.log(`POKER GIFT Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
