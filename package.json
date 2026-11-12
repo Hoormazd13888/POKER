@@ -1,7 +1,6 @@
 {
   "name": "ton-price-bot",
   "version": "1.0.0",
-  "description": "TON Price Bot for Telegram",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
