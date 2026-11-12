@@ -7,7 +7,6 @@ const bot = new TelegramBot(TOKEN, { polling: true });
 const app = express();
 app.get('/', (req, res) => res.send('Bot is running!'));
 
-// اینجا آیدی عددی تلگرام خودتان را بگذارید تا فقط شما ادمین باشید (یا اولین کسی که استارت بزند)
 let adminId = null; 
 let adminStates = {}; 
 let giveaways = {};   
@@ -49,7 +48,7 @@ bot.on('callback_query', (query) => {
       step: 'BANNER_PHOTO',
       data: { participants: [], ticketsBought: 0 }
     };
-    bot.sendMessage(chatId, `🎁 **ساخت قرعه‌کشی جدید** (مرحله ۱ از ۵)\n\nلطفاً **عکس بنر** قرعه‌کشی را مستقیماً از گالری ارسال کنید:`, {
+    bot.sendMessage(chatId, `🎁 **ساخت قرعه‌کشی جدید** (مرحله ۱ از ۶)\n\nلطفاً **عکس بنر** قرعه‌کشی را مستقیماً از گالری ارسال کنید:`, {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [[{ text: '❌ لغو ساخت', callback_data: 'cancel_gw' }]]
@@ -75,7 +74,7 @@ bot.on('photo', async (msg) => {
     state.data.bannerPhotoId = photo[photo.length - 1].file_id;
     state.step = 'PRIZE';
     
-    bot.sendMessage(chatId, `✅ عکس بنر دریافت شد.\n\n🏆 **مرحله ۲ از ۵:**\nعنوان یا نوع جایزه قرعه‌کشی را بنویسید (مثلاً: قرعه‌کشی تدی):`, {
+    bot.sendMessage(chatId, `✅ عکس بنر دریافت شد.\n\n🏆 **مرحله ۲ از ۶:**\nعنوان یا نوع جایزه قرعه‌کشی را بنویسید (مثلاً: قرعه‌کشی تدی):`, {
       parse_mode: 'Markdown',
       reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
     });
@@ -96,7 +95,7 @@ bot.on('message', async (msg) => {
     case 'PRIZE':
       state.data.prize = cleanText;
       state.step = 'DESC';
-      bot.sendMessage(chatId, `✅ جایزه ثبت شد.\n\n📝 **مرحله ۳ از ۵:**\nتوضیحات قرعه‌کشی را بنویسید (اگر ندارید، کلمه «رد» را بفرستید):`, {
+      bot.sendMessage(chatId, `✅ جایزه ثبت شد.\n\n📝 **مرحله ۳ از ۶:**\nتوضیحات قرعه‌کشی را بنویسید (اگر ندارید، کلمه «رد» را بفرستید):`, {
         parse_mode: 'Markdown',
         reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
       });
@@ -104,11 +103,25 @@ bot.on('message', async (msg) => {
 
     case 'DESC':
       state.data.description = cleanText === 'رد' ? '' : cleanText;
-      state.step = 'TYPE';
-      bot.sendMessage(chatId, `✅ توضیحات ثبت شد.\n\n⚙️ **مرحله ۴ از ۵:**\nنوع قرعه‌کشی را انتخاب کنید:\n1️⃣ رایگان (با لینک دعوت)\n2️⃣ تیکتی (خرید با Telegram Stars)\n\nعدد 1 یا 2 را بفرستید:`, {
+      state.step = 'WINNERS_COUNT';
+      bot.sendMessage(chatId, `✅ توضیحات ثبت شد.\n\n👥 **مرحله ۴ از ۶:**\nتعداد برندگان قرعه‌کشی را وارد کنید (مثلاً: 1 یا 3):`, {
         parse_mode: 'Markdown',
         reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
       });
+      break;
+
+    case 'WINNERS_COUNT':
+      const winnersCount = parseInt(cleanText);
+      if (!isNaN(winnersCount) && winnersCount > 0) {
+        state.data.winnersCount = winnersCount;
+        state.step = 'TYPE';
+        bot.sendMessage(chatId, `✅ تعداد برندگان (${winnersCount} نفر) ثبت شد.\n\n⚙️ **مرحله ۵ از ۶:**\nنوع قرعه‌کشی را انتخاب کنید:\n1️⃣ رایگان (با لینک دعوت)\n2️⃣ تیکتی (خرید با Telegram Stars)\n\nعدد 1 یا 2 را بفرستید:`, {
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
+        });
+      } else {
+        bot.sendMessage(chatId, `⚠️ لطفاً یک عدد معتبر برای تعداد برندگان وارد کنید.`);
+      }
       break;
 
     case 'TYPE':
@@ -137,7 +150,19 @@ bot.on('message', async (msg) => {
         state.data.ticketPrice = parseInt(numbers[0]);
         state.data.maxTickets = parseInt(numbers[1]);
         state.step = 'CHANNELS';
-        bot.sendMessage(chatId, `✅ جزئیات تیکت ثبت شد.\n\n📢 **مرحله ۵ (آخر):**\nآیدی یا لینک کانال‌ها را بفرستید (**هر کانال در یک خط جداگانه**):`, {
+        bot.sendMessage(chatId, `✅ جزئیات تیکت ثبت شد.\n\n📢 **مرحله ۶ (آخر):**\nآیدی یا لینک کانال‌ها را بفرستید (**هر کانال در یک خط جداگانه**):`, {
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
+        });
+      } else {
+        bot.sendMessage(chatId, `⚠️ فرمت اشتباه است. مثال: \`5 3\``, { parse_mode: 'Markdown'
+                  case 'TICKET_DETAILS':
+      const numbers = cleanText.match(/\d+/g);
+      if (numbers && numbers.length >= 2) {
+        state.data.ticketPrice = parseInt(numbers[0]);
+        state.data.maxTickets = parseInt(numbers[1]);
+        state.step = 'CHANNELS';
+        bot.sendMessage(chatId, `✅ جزئیات تیکت ثبت شد.\n\n📢 **مرحله ۶ (آخر):**\nآیدی یا لینک کانال‌ها را بفرستید (**هر کانال در یک خط جداگانه**):`, {
           parse_mode: 'Markdown',
           reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
         });
@@ -151,7 +176,7 @@ bot.on('message', async (msg) => {
       if (!isNaN(minutes)) {
         state.data.durationMinutes = minutes;
         state.step = 'CHANNELS';
-        bot.sendMessage(chatId, `✅ زمان ثبت شد.\n\n📢 **مرحله ۵ (آخر):**\nآیدی یا لینک کانال‌ها را بفرستید (**هر کانال در یک خط جداگانه**):`, {
+        bot.sendMessage(chatId, `✅ زمان ثبت شد.\n\n📢 **مرحله ۶ (آخر):**\nآیدی یا لینک کانال‌ها را بفرستید (**هر کانال در یک خط جداگانه**):`, {
           parse_mode: 'Markdown',
           reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
         });
@@ -161,7 +186,6 @@ bot.on('message', async (msg) => {
       break;
 
     case 'CHANNELS':
-      // جدا کردن کانال‌ها بر اساس خط جدید (\n) تا هر لینک در یک خط باشد
       const channels = cleanText.split('\n').map(c => c.trim()).filter(c => c.length > 0);
       state.data.channels = channels;
 
@@ -174,7 +198,7 @@ bot.on('message', async (msg) => {
 
       for (const ch of channels) {
         try {
-          const captionText = `🎁 **قرعه‌کشی بزرگ: ${state.data.prize}**\n\n📝 ${state.data.description || 'بدون توضیحات'}\n\n👥 تعداد شرکت‌کنندگان: 0\n🎫 تیکت‌ها: 0 از ${state.data.maxTickets || 0}`;
+          const captionText = `🎁 **قرعه‌کشی بزرگ: ${state.data.prize}**\n\n📝 ${state.data.description || 'بدون توضیحات'}\n\n👥 تعداد شرکت‌کنندگان: 0\n${state.data.type === 'TICKET' ? `🎫 تیکت‌ها: 0 از ${state.data.maxTickets}` : ''}`;
           
           const sentMsg = await bot.sendPhoto(ch, state.data.bannerPhotoId, {
             caption: captionText,
@@ -221,7 +245,6 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
       if (gw.ticketsBought >= gw.maxTickets) {
         return bot.sendMessage(chatId, `❌ ظرفیت تیکت‌های این قرعه‌کشی تکمیل شده است.`);
       }
-      // ارسال فاکتور تلگرام استارز برای خرید تیکت
       bot.sendInvoice(
         chatId,
         'خرید تیکت قرعه‌کشی',
@@ -245,7 +268,7 @@ bot.on('pre_checkout_query', (query) => bot.answerPreCheckoutQuery(query.id, tru
 
 bot.on('successful_payment', (msg) => {
   const chatId = msg.chat.id;
-  const payload = msg.successful_payment.invoice_payload; // مثال: ticket_gw_123_userId
+  const payload = msg.successful_payment.invoice_payload; 
   const parts = payload.split('_');
   const giveawayId = parts[1] + '_' + parts[2];
   const userId = parseInt(parts[3]);
@@ -272,7 +295,7 @@ async function updateAllBanners(giveawayId) {
   if (!gw || !gw.channels) return;
   const botInfo = await bot.getMe();
 
-  const newCaption = `🎁 **قرعه‌کشی بزرگ: ${gw.prize}**\n\n📝 ${gw.description || 'بدون توضیحات'}\n\n👥 تعداد شرکت‌کنندگان: ${gw.participants.length}\n🎫 تیکت‌ها: ${gw.ticketsBought} از ${gw.maxTickets}`;
+  const newCaption = `🎁 **قرعه‌کشی بزرگ: ${gw.prize}**\n\n📝 ${gw.description || 'بدون توضیحات'}\n\n👥 تعداد شرکت‌کنندگان: ${gw.participants.length}\n${gw.type === 'TICKET' ? `🎫 تیکت‌ها: ${gw.ticketsBought} از ${gw.maxTickets}` : ''}`;
 
   for (const ch of gw.channels) {
     try {
@@ -296,12 +319,23 @@ async function finishGiveaway(giveawayId) {
   gw.finished = true;
 
   if (gw.participants.length > 0) {
-    const winner = gw.participants[Math.floor(Math.random() * gw.participants.length)];
+    let winnersList = [];
+    let tempParticipants = [...gw.participants];
+    let count = Math.min(gw.winnersCount || 1, tempParticipants.length);
+
+    for (let i = 0; i < count; i++) {
+      const randomIndex = Math.floor(Math.random() * tempParticipants.length);
+      winnersList.push(tempParticipants.splice(randomIndex, 1)[0]);
+    }
+
+    const winnersText = winnersList.map(w => `[${w.name}](tg://user?id=${w.id})`).join('\n');
+
     for (const ch of gw.channels) {
-      bot.sendMessage(ch, `🏆 **برنده قرعه‌کشی (${gw.prize}) مشخص شد!**\n\n🎉 تبریک به کاربر: [${winner.name}](tg://user?id=${winner.id})\n\nلطفاً برای دریافت جایزه به ادمین پیام دهید.`, { parse_mode: 'Markdown' });
+      bot.sendMessage(ch, `🏆 **برندگان قرعه‌کشی (${gw.prize}) مشخص شدند!**\n\n🎉 تبریک به نفرات برتر:\n${winnersText}\n\nلطفاً برای دریافت جایزه به ادمین پیام دهید.`, { parse_mode: 'Markdown' });
     }
   }
 }
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => { console.log(`Bot running on port ${PORT}`); });
+  
