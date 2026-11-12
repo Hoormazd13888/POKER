@@ -39,27 +39,32 @@
     let appData = {};
 
     async function loadData() {
-      const res = await fetch(`/api/data/${user.id}`);
-      appData = await res.json();
-      
-      const container = document.getElementById('plansContainer');
-      container.innerHTML = '';
+      try {
+        const res = await fetch(`/api/data/${user.id}`);
+        appData = await res.json();
+        
+        const container = document.getElementById('plansContainer');
+        container.innerHTML = '';
 
-      for (const [id, plan] of Object.entries(appData.plans)) {
-        container.innerHTML += `
-          <div class="card">
-            <div class="plan-title">اشتراک ${plan.days} روزه</div>
-            <div style="font-size: 20px; font-weight: bold; color: #FFD600; margin: 6px 0;">${plan.price} TON</div>
-            <button class="btn btn-ton" onclick="buyPlan('${appData.wallet}', ${plan.price}, ${id})">پرداخت با Tonkeeper 🚀</button>
-          </div>
-        `;
-      }
+        for (const [id, plan] of Object.entries(appData.plans)) {
+          container.innerHTML += `
+            <div class="card">
+              <div class="plan-title">اشتراک ${plan.days} روزه</div>
+              <div style="font-size: 20px; font-weight: bold; color: #FFD600; margin: 6px 0;">${plan.price} TON</div>
+              <button class="btn btn-ton" onclick="buyPlan('${appData.wallet}', ${plan.price}, ${id})">پرداخت مستقیم با Tonkeeper 🚀</button>
+            </div>
+          `;
+        }
 
-      if (appData.subscription && appData.subscription.expireAt > Date.now()) {
-        document.getElementById('channelBox').style.display = 'block';
+        if (appData.subscription && appData.subscription.expireAt > Date.now()) {
+          document.getElementById('channelBox').style.display = 'block';
+        }
+      } catch (e) {
+        console.error("Error loading data:", e);
       }
     }
 
+    // اتصال مستقیم به والت تونکیپر و قرار دادن آیدی عددی کاربر به عنوان کامنت تراکنش[span_1](start_span)[span_1](end_span)
     function buyPlan(wallet, amount, planId) {
       const memo = user.id; 
       const nanoTon = amount * 1e9;
@@ -71,27 +76,39 @@
     }
 
     async function verifyPayment(planId) {
-      const res = await fetch('/api/verify-payment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, planId })
-      });
-      const data = await res.json();
-      alert(data.message);
-      if (data.success) {
-        document.getElementById('channelBox').style.display = 'block';
+      try {
+        const res = await fetch('/api/verify-payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id, planId })
+        });
+        const data = await res.json();
+        alert(data.message);
+        if (data.success) {
+          document.getElementById('channelBox').style.display = 'block';
+        }
+      } catch (e) {
+        alert("خطا در بررسی پرداخت.");
       }
     }
 
     async function saveChannel() {
       const channelUsername = document.getElementById('channelInput').value;
-      const res = await fetch('/api/set-channel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, channelUsername })
-      });
-      const data = await res.json();
-      alert(data.message);
+      if (!channelUsername) {
+        alert("لطفاً آیدی کانال را وارد کنید.");
+        return;
+      }
+      try {
+        const res = await fetch('/api/set-channel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id, channelUsername })
+        });
+        const data = await res.json();
+        alert(data.message);
+      } catch (e) {
+        alert("خطا در ذخیره کانال.");
+      }
     }
 
     loadData();
