@@ -8,200 +8,229 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// توکن ربات
 const TOKEN = '9173107929:AAG4CcOtg-8bT_4G_a4qJpN9LlJSrI7yBLg';
 const bot = new TelegramBot(TOKEN, { polling: true });
-
-// آدرس دامنه شما در Render (حتماً با لینک واقعی سرویس خود جایگزین کنید)
 const WEB_APP_URL = process.env.RENDER_EXTERNAL_URL || 'https://poker.onrender.com';
 
-// دیتابیس مرکزی در حافظه (قابل ارتقا به PostgreSQL)
 const db = {
-    admins: [], // اولین نفری که /admin بزند اضافه می‌شود
+    admins: [],
     users: {},
-    tournaments: [
-        { id: 1, title: '🏆 تورنمنت روزانه ARENA', prize: '5000 امتیاز + نشان VIP', status: 'فعال' },
-        { id: 2, title: '🔥 لیگ هفتگی پادشاهان TON', prize: '25000 امتیاز + اسکین طلایی', status: 'در حال ثبت‌نام' }
-    ],
-    shopItems: [
-        { id: 'skin_gold', name: '👑 اسکین طلایی میز', price: 1500, currency: 'PTS' },
-        { id: 'vip_pass', name: '💎 اشتراک VIP ماهانه', price: 2.5, currency: 'TON' },
-        { id: 'avatar_pro', name: '🦁 آواتار اختصاصی آرنا', price: 800, currency: 'PTS' }
-    ],
+    tournaments: [], // مسابقات دستی ادمین
+    tasks: [], // تسک‌ها و مأموریت‌های دستی ادمین
+    bonuses: {}, // کدهای بونوس فعال (code -> {amount, maxUses, usedCount})
+    settings: {
+        feePercent: 5, // درصد مالیات بازی آرنا
+        forceChannel: '',
+        dailyBonusActive: false,
+        dailyBonusAmount: 0.1
+    },
+    activeArenaGame: {
+        status: 'waiting',
+        timer: 15,
+        players: [],
+        bank: 0,
+        winner: null
+    },
     transactions: []
 };
 
-// دریافت یا ساخت پروفایل کاربر
 function getOrCreateUser(id, name = 'بازیکن', username = '') {
     if (!db.users[id]) {
         db.users[id] = {
             id,
             name,
             username,
-            points: 1000,
-            level: 1,
+            balance: 0, // موجودی اولیه صفر با الماس 💎
             wins: 0,
             losses: 0,
-            referrals: 0,
             banned: false,
-            vip: false,
-            inventory: [],
-            missions: { dailyClaimed: false },
-            history: ['ثبت‌نام در پلتفرم ARENA | TON']
+            claimedBonuses: [],
+            history: []
         };
     }
     return db.users[id];
 }
 
-// --- API های ارتباطی مینی‌اپ ---
+// --- API های مینی‌اپ و پنل مدیریت ---
 
-// دریافت اطلاعات کامل کاربر و سیستم
 app.post('/api/sync', (req, res) => {
-    const { id, first_name, username, ref } = req.body;
+    const { id, first_name, username } = req.body;
     if (!id) return res.status(400).json({ error: 'Invalid User' });
 
-    const isNew = !db.users[id];
     const user = getOrCreateUser(id, first_name, username);
+    if (user.banned) return res.status(403).json({ error: 'حساب شما مسدود است.' });
 
-    if (isNew && ref && db.users[ref] && ref != id) {
-        db.users[ref].referrals += 1;
-        db.users[ref].points += 500;
-        db.users[ref].history.unshift(`دعوت موفق کاربر ${first_name} (+500 امتیاز)`);
-    }
-
-    if (user.banned) return res.status(403).json({ error: 'حساب شما مسدود شده است.' });
-
-    // رتبه‌بندی
     const leaderboard = Object.values(db.users)
-        .sort((a, b) => b.points - a.points)
+        .sort((a, b) => b.balance - a.balance)
         .slice(0, 10)
-        .map(u => ({ name: u.name, points: u.points, level: u.level, vip: u.vip }));
+        .map(u => ({ name: u.name, balance: u.balance }));
 
     res.json({
         user,
         leaderboard,
         tournaments: db.tournaments,
-        shopItems: db.shopItems,
+        tasks: db.tasks,
+        dailyBonus: db.settings.dailyBonusActive ? db.settings.dailyBonusAmount : null,
+        arena: db.activeArenaGame,
         isAdmin: db.admins.includes(Number(id))
     });
 });
 
-// ثبت نتیجه بازی
-app.post('/api/game-result', (req, res) => {
-    const { id, gameName, won, pointsChange } = req.body;
+// واریز و شارژ حساب
+app.post('/api/deposit', (req, res) => {
+    const { id, amount, txHash } = req.body;
     const user = db.users[id];
-    if (!user || user.banned) return res.status(403).json({ error: 'Access denied' });
+    if (!user) return res.status(404).json();
 
-    if (won) {
-        user.wins += 1;
-        user.points += pointsChange;
-        user.history.unshift(`برد در ${gameName} (+${pointsChange} امتیاز)`);
-    } else {
-        user.losses += 1;
-        user.points = Math.max(0, user.points - pointsChange);
-        user.history.unshift(`باخت در ${gameName} (-${pointsChange} امتیاز)`);
-    }
-    user.level = Math.floor(user.points / 1000) + 1;
-
-    res.json({ user });
+    const txId = txHash || 'TX_' + Date.now();
+    db.transactions.push({ id: txId, userId: id, type: 'واریز', amount, status: 'تایید شده', date: new Date().toLocaleDateString('fa-IR') });
+    
+    user.balance += Number(amount);
+    user.history.unshift(`+${amount} 💎 (واریز موفق)`);
+    res.json({ success: true, user });
 });
 
-// دریافت پاداش مأموریت روزانه
-app.post('/api/claim-mission', (req, res) => {
-    const { id } = req.body;
+// برداشت TON
+app.post('/api/withdraw', (req, res) => {
+    const { id, amount, wallet } = req.body;
     const user = db.users[id];
-    if (!user) return res.status(404).json({ error: 'Not found' });
+    if (!user || user.balance < amount) return res.status(400).json({ error: 'موجودی کافی نیست.' });
 
-    if (user.missions.dailyClaimed) {
-        return res.status(400).json({ error: 'پاداش امروز قبلاً دریافت شده است.' });
-    }
-    user.missions.dailyClaimed = true;
-    user.points += 300;
-    user.history.unshift('تکمیل مأموریت روزانه (+300 امتیاز)');
-    res.json({ user });
+    user.balance -= Number(amount);
+    db.transactions.push({ userId: id, type: 'برداشت', amount, wallet, status: 'در حال بررسی', date: new Date().toLocaleDateString('fa-IR') });
+    user.history.unshift(`-${amount} 💎 (درخواست برداشت)`);
+    res.json({ success: true, user });
 });
 
-// خرید از فروشگاه
-app.post('/api/buy-item', (req, res) => {
-    const { id, itemId, txHash } = req.body;
+// بازی آرنا با کسر مالیات تعیین شده توسط ادمین
+app.post('/api/arena/join', (req, res) => {
+    const { id, amount } = req.body;
     const user = db.users[id];
-    const item = db.shopItems.find(i => i.id === itemId);
-    if (!user || !item) return res.status(400).json({ error: 'Invalid request' });
+    if (!user || user.balance < amount) return res.status(400).json({ error: 'موجودی کافی نیست.' });
 
-    if (item.currency === 'PTS') {
-        if (user.points < item.price) return res.status(400).json({ error: 'امتیاز کافی نیست!' });
-        user.points -= item.price;
-    } else if (item.currency === 'TON') {
-        db.transactions.push({ userId: id, item: item.name, amount: item.price, hash: txHash || 'TON_CONNECT_TX', date: new Date().toLocaleString('fa-IR') });
-        if (item.id === 'vip_pass') user.vip = true;
+    user.balance -= Number(amount);
+    db.activeArenaGame.bank += Number(amount);
+    db.activeArenaGame.players.push({ id, name: user.name, amount });
+
+    if (db.activeArenaGame.status === 'waiting' && db.activeArenaGame.players.length === 1) {
+        db.activeArenaGame.status = 'countdown';
+        db.activeArenaGame.timer = 15;
+        
+        const timerInterval = setInterval(() => {
+            db.activeArenaGame.timer -= 1;
+            if (db.activeArenaGame.timer <= 0) {
+                clearInterval(timerInterval);
+                db.activeArenaGame.status = 'spinning';
+                
+                setTimeout(() => {
+                    const players = db.activeArenaGame.players;
+                    if (players.length > 0) {
+                        const winner = players[Math.floor(Math.random() * players.length)];
+                        const fee = (db.activeArenaGame.bank * db.settings.feePercent) / 100;
+                        const finalPrize = db.activeArenaGame.bank - fee;
+                        
+                        db.users[winner.id].balance += finalPrize;
+                        db.users[winner.id].wins += 1;
+                        db.activeArenaGame.winner = winner.name;
+                        db.activeArenaGame.status = 'finished';
+                        db.activeArenaGame.historyText = `برنده: ${winner.name} (${finalPrize.toFixed(2)} 💎)`;
+                    }
+                }, 4000);
+            }
+        }, 1000);
     }
-
-    user.inventory.push(item.name);
-    user.history.unshift(`خرید ${item.name}`);
-    res.json({ user });
+    res.json({ success: true, arena: db.activeArenaGame, user });
 });
 
-// API پنل ادمین
-app.post('/api/admin/stats', (req, res) => {
-    const { id } = req.body;
-    if (!db.admins.includes(Number(id))) return res.status(403).json({ error: 'Unauthorized' });
+// دریافت بونوس / گیفت‌کد
+app.post('/api/bonus/claim', (req, res) => {
+    const { id, code } = req.body;
+    const user = db.users[id];
+    const bonus = db.bonuses[code];
+    if (!user || !bonus) return res.status(400).json({ error: 'کد نامعتبر است.' });
+    if (bonus.usedCount >= bonus.maxUses) return res.status(400).json({ error: 'ظرفیت این بونوس تکمیل شده است.' });
+    if (user.claimedBonuses.includes(code)) return res.status(400).json({ error: 'شما قبلاً این بونوس را دریافت کرده‌اید.' });
 
-    const allUsers = Object.values(db.users);
+    bonus.usedCount += 1;
+    user.claimedBonuses.push(code);
+    user.balance += bonus.amount;
+    user.history.unshift(`+${bonus.amount} 💎 (بونوس/گیفت‌کد)`);
+    res.json({ success: true, user });
+});
+
+// --- پنل مدیریت ادمین ---
+app.post('/api/admin/data', (req, res) => {
+    const { adminId } = req.body;
+    if (!db.admins.includes(Number(adminId))) return res.status(403).json({ error: 'Unauthorized' });
+
     res.json({
-        totalUsers: allUsers.length,
-        totalGames: allUsers.reduce((acc, u) => acc + u.wins + u.losses, 0),
-        totalTx: db.transactions.length,
-        usersList: allUsers,
-        transactions: db.transactions
+        settings: db.settings,
+        transactions: db.transactions,
+        usersCount: Object.keys(db.users).length,
+        tournaments: db.tournaments,
+        tasks: db.tasks
     });
 });
 
-app.post('/api/admin/ban', (req, res) => {
-    const { adminId, targetId } = req.body;
-    if (!db.admins.includes(Number(adminId))) return res.status(403).json({ error: 'Unauthorized' });
-    if (db.users[targetId]) {
-        db.users[targetId].banned = !db.users[targetId].banned;
-    }
+app.post('/api/admin/update-settings', (req, res) => {
+    const { adminId, feePercent, dailyActive, dailyAmount, forceChannel } = req.body;
+    if (!db.admins.includes(Number(adminId))) return res.status(403).json();
+
+    db.settings.feePercent = Number(feePercent);
+    db.settings.dailyBonusActive = dailyActive;
+    db.settings.dailyBonusAmount = Number(dailyAmount);
+    db.settings.forceChannel = forceChannel;
     res.json({ success: true });
 });
 
-// --- دستورات ربات تلگرام ---
+app.post('/api/admin/create-bonus', (req, res) => {
+    const { adminId, code, amount, maxUses } = req.body;
+    if (!db.admins.includes(Number(adminId))) return res.status(403).json();
 
+    db.bonuses[code] = { amount: Number(amount), maxUses: Number(maxUses), usedCount: 0 };
+    res.json({ success: true, link: `https://t.me/YourBot?start=bonus_${code}` });
+});
+
+app.post('/api/admin/add-task', (req, res) => {
+    const { adminId, title, reward } = req.body;
+    if (!db.admins.includes(Number(adminId))) return res.status(403).json();
+
+    db.tasks.push({ id: Date.now(), title, reward: Number(reward) });
+    res.json({ success: true, tasks: db.tasks });
+});
+
+// --- دستورات ربات تلگرام ---
 bot.onText(/\/admin/, (msg) => {
     const chatId = msg.chat.id;
     if (db.admins.length === 0 || db.admins.includes(chatId)) {
         if (!db.admins.includes(chatId)) db.admins.push(chatId);
-        bot.sendMessage(chatId, `👑 دسترسی **مدیر ارشد ARENA | TON** برای شما فعال شد.\nوارد مینی‌اپ شوید تا تب **پنل مدیریت** را مشاهده کنید.`, {
-            parse_mode: 'Markdown',
-            reply_markup: {
-                inline_keyboard: [[{ text: '🚀 ورود به مینی‌اپ و پنل مدیریت', web_app: { url: WEB_APP_URL } }]]
-            }
+        bot.sendMessage(chatId, `👑 پنل مدیریت کامل **POKER GIFT** فعال شد.`, {
+            reply_markup: { inline_keyboard: [[{ text: '🚀 ورود به مینی‌اپ و مدیریت', web_app: { url: WEB_APP_URL } }]] }
         });
-    } else {
-        bot.sendMessage(chatId, '⛔ شما دسترسی مدیریت ندارید.');
     }
 });
 
 bot.onText(/\/start(?:\s+(.+))?/, (msg, match) => {
     const chatId = msg.chat.id;
-    const name = msg.from.first_name || 'بازیکن';
-    const refParam = match[1] ? `?ref=${match[1]}` : '';
+    const param = match ? match[1] : null;
+    const user = getOrCreateUser(chatId, msg.from.first_name, msg.from.username);
 
-    getOrCreateUser(chatId, name, msg.from.username);
-
-    const text = `⚔️ **به دنیای رقابت ARENA | TON خوش آمدید!**\n\n` +
-                 `سلام ${name} عزیز؛ پلتفرم جامع بازی‌های رقابتی، تورنمنت‌ها و پاداش‌های مبتنی بر شبکه **TON** آماده است.\n\n` +
-                 `👇 برای ورود به محیط گرافیکی مینی‌اپ روی دکمه زیر کلیک کنید:`;
-
-    bot.sendMessage(chatId, text, {
-        parse_mode: 'Markdown',
-        reply_markup: {
-            inline_keyboard: [
-                [{ text: '🎮 ورود به مینی‌اپ ARENA | TON', web_app: { url: `${WEB_APP_URL}${refParam}` } }],
-                [{ text: '📢 کانال رسمی ما', url: 'https://t.me/Tel_Shop26' }]
-            ]
+    if (param && param.startsWith('bonus_')) {
+        const code = param.replace('bonus_', '');
+        const bonus = db.bonuses[code];
+        if (bonus && bonus.usedCount < bonus.maxUses && !user.claimedBonuses.includes(code)) {
+            bonus.usedCount += 1;
+            user.claimedBonuses.push(code);
+            user.balance += bonus.amount;
+            bot.sendMessage(chatId, `🎉 تبریک! مبلغ ${bonus.amount} 💎 بونوس به حساب شما واریز شد.`);
+        } else {
+            bot.sendMessage(chatId, `❌ این بونوس نامعتبر، منقضی یا قبلاً استفاده شده است.`);
         }
+    }
+
+    bot.sendMessage(chatId, `♠️♥️ به پلتفرم **POKER GIFT** خوش آمدید!\n\nبرای ورود به بازی‌ها و مدیریت حساب روی دکمه زیر کلیک کنید:`, {
+        reply_markup: { inline_keyboard: [[{ text: '🎲 ورود به مینی‌اپ POKER GIFT', web_app: { url: WEB_APP_URL } }]] }
     });
 });
 
-app.listen(PORT, () => console.log(`ARENA | TON Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`POKER GIFT Server running on port ${PORT}`));
