@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NFT SNIPER BOT</title>
+    <title>NFT & GIFT SNIPER</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet">
     <style>
@@ -19,51 +19,59 @@
         }
 
         * { box-sizing: border-box; font-family: 'Vazirmatn', sans-serif; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
-        body { background-color: var(--bg-deep); background-image: radial-gradient(circle at 50% -15%, #1e1b4b 0%, var(--bg-deep) 65%); color: var(--text-main); padding: 16px; min-height: 100vh; }
+        body { background-color: var(--bg-deep); background-image: radial-gradient(circle at 50% -15%, #1e1b4b 0%, var(--bg-deep) 65%); color: var(--text-main); padding: 16px; min-height: 100vh; padding-bottom: 40px; }
 
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .logo { font-size: 18px; font-weight: 900; background: linear-gradient(135deg, #fff, var(--blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .logo { font-size: 17px; font-weight: 900; background: linear-gradient(135deg, #fff, var(--blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .status-badge { background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); color: var(--green); padding: 5px 12px; border-radius: 20px; font-weight: 800; font-size: 11px; display: flex; align-items: center; gap: 6px; }
         .dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%; box-shadow: 0 0 8px var(--green); }
 
-        .card { background: var(--card-bg); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 20px; padding: 18px; margin-bottom: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .card { background: var(--card-bg); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 20px; padding: 18px; margin-bottom: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         .card-title { font-size: 14px; font-weight: 800; color: var(--gold); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
 
         .btn { width: 100%; padding: 12px; border: none; border-radius: 14px; font-weight: 800; font-size: 13px; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px; transition: 0.15s; }
         .btn:active { transform: scale(0.96); }
-        .btn-blue { background: linear-gradient(135deg, #38bdf8, #0284c7); color: #000; }
+        .btn-blue { background: linear-gradient(135deg, #38bdf8, #0284c7); color: #000; box-shadow: 0 4px 15px rgba(56,189,248,0.3); }
+        .btn-green { background: linear-gradient(135deg, #10b981, #059669); color: #fff; box-shadow: 0 4px 15px rgba(16,185,129,0.3); margin-top: 10px; }
 
         .list-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px; }
         .list-row:last-child { border-bottom: none; }
-        input { width: 100%; padding: 12px; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; margin-bottom: 10px; font-size: 13px; outline: none; }
+        input { width: 100%; padding: 12px; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; margin-bottom: 12px; font-size: 13px; outline: none; }
         label { font-size: 11px; font-weight: 800; color: var(--text-muted); display: block; margin-bottom: 5px; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <div class="logo">🎯 NFT & GIFT SNIPER</div>
-        <div class="status-badge"><span class="dot"></span> ربات فعال و آنلاین</div>
+        <div class="logo">🎯 SNIPER CONFIG</div>
+        <div class="status-badge"><span class="dot"></span> اسکنر پرسرعت فعال</div>
     </div>
 
     <div class="card">
-        <div class="card-title">📊 وضعیت سیستم شکارچی</div>
-        <div class="list-row"><span>مارکت‌های تحت رصد:</span><strong style="color:var(--blue);">مارکت استارز تلگرام</strong></div>
-        <div class="list-row"><span>بازه زمانی اسکن:</span><strong style="color:var(--gold);">هر ۶۰ ثانیه</strong></div>
-        <div class="list-row"><span>وضعیت ارسال کانال:</span><strong style="color:var(--green);">متصل و خودکار</strong></div>
+        <div class="card-title">📢 تنظیمات کانال مقصد</div>
+        <label>آیدی کانال (مثلا @ChannelID):</label>
+        <input type="text" id="channel-input" placeholder="@YourChannel">
     </div>
 
     <div class="card">
-        <div class="card-title">⚙️ تنظیمات آستانه تخفیف</div>
-        <label>حداقل درصد تخفیف برای ارسال در کانال:</label>
-        <input type="number" id="min-discount" value="15" placeholder="مثلا 15 درصد زیر قیمت کف">
-        <button class="btn btn-blue" onclick="alert('تنظیمات با موفقیت ذخیره شد.')">ذخیره تنظیمات 💾</button>
+        <div class="card-title">💰 فیلتر قیمت و تخفیف (استارز ⭐️)</div>
+        <label>حداقل قیمت (Stars):</label>
+        <input type="number" id="min-price" placeholder="مثلا 10">
+        
+        <label>حداکثر قیمت (Stars):</label>
+        <input type="number" id="max-price" placeholder="مثلا 500">
+        
+        <label>حداقل درصد تخفیف زیر کف بازار:</label>
+        <input type="number" id="min-discount" placeholder="مثلا 15">
+
+        <button class="btn btn-blue" onclick="saveConfig()">ذخیره تنظیمات 💾</button>
+        <button class="btn btn-green" onclick="testHunt()">ارسال تست به کانال 🚀</button>
     </div>
 
     <div class="card">
         <div class="card-title">🔥 آخرین آیتم‌های شکار شده</div>
-        <div id="latest-hunts">
-            <div class="list-row"><span>Gift #4521 (150 ⭐️)</span><strong style="color:var(--green);">ارسال شد ✅</strong></div>
+        <div id="hunted-list">
+            <div class="list-row"><span>Gift #88 (45 ⭐️)</span><strong style="color:var(--green);">ارسال شد ✅</strong></div>
         </div>
     </div>
 
@@ -74,6 +82,40 @@
             tg.expand();
             tg.ready();
         } catch (e) { console.log('Telegram WebApp not ready'); }
+
+        async function loadConfig() {
+            try {
+                const res = await fetch('/api/config/get');
+                const data = await res.json();
+                document.getElementById('channel-input').value = data.config.channelUsername;
+                document.getElementById('min-price').value = data.config.minPrice;
+                document.getElementById('max-price').value = data.config.maxPrice;
+                document.getElementById('min-discount').value = data.config.minDiscount;
+            } catch (e) { console.log('Load error', e); }
+        }
+
+        async function saveConfig() {
+            const channel = document.getElementById('channel-input').value;
+            const minPrice = document.getElementById('min-price').value;
+            const maxPrice = document.getElementById('max-price').value;
+            const minDiscount = document.getElementById('min-discount').value;
+
+            const res = await fetch('/api/config/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ channel, minPrice, maxPrice, minDiscount })
+            });
+            const data = await res.json();
+            alert(data.message);
+        }
+
+        async function testHunt() {
+            const res = await fetch('/api/test-hunt', { method: 'POST' });
+            const data = await res.json();
+            alert(data.message || data.error);
+        }
+
+        loadConfig();
     </script>
 </body>
 </html>
