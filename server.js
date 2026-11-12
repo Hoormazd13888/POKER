@@ -12,7 +12,7 @@ let giveaways = {};
 
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
-  resetAdmin(chatId);
+  delete adminStates[chatId];
   sendStartMenu(chatId);
 });
 
@@ -24,10 +24,6 @@ function sendStartMenu(chatId) {
       ]
     }
   });
-}
-
-function resetAdmin(chatId) {
-  delete adminStates[chatId];
 }
 
 bot.on('callback_query', (query) => {
@@ -45,7 +41,7 @@ bot.on('callback_query', (query) => {
     });
     bot.answerCallbackQuery(query.id);
   } else if (query.data === 'cancel_gw') {
-    resetAdmin(chatId);
+    delete adminStates[chatId];
     bot.sendMessage(chatId, `❌ عملیات لغو شد.`);
     sendStartMenu(chatId);
     bot.answerCallbackQuery(query.id);
@@ -70,7 +66,7 @@ bot.on('photo', async (msg) => {
   }
 });
 
-// دریافت پیام‌های متنی و مدیریت مراحل
+// مدیریت تمام مراحل متنی با switch-case دقیق
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
@@ -78,107 +74,108 @@ bot.on('message', async (msg) => {
 
   if (!adminStates[chatId]) return;
   const state = adminStates[chatId];
+  const cleanText = text.trim();
 
-  // مرحله ۲: جایزه
-  if (state.step === 'PRIZE') {
-    state.data.prize = text.trim();
-    state.step = 'DESC';
-    bot.sendMessage(chatId, `✅ جایزه ثبت شد.\n\n📝 **مرحله ۳ از ۵:**\nتوضیحات قرعه‌کشی را بنویسید (اگر ندارید، کلمه «رد» را بفرستید):`, {
-      parse_mode: 'Markdown',
-      reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
-    });
-  }
-  // مرحله ۳: توضیحات
-  else if (state.step === 'DESC') {
-    state.data.description = text.trim() === 'رد' ? '' : text.trim();
-    state.step = 'TYPE';
-    bot.sendMessage(chatId, `✅ توضیحات ثبت شد.\n\n⚙️ **مرحله ۴ از ۵:**\nنوع قرعه‌کشی را انتخاب کنید:\n1️⃣ رایگان (با لینک دعوت)\n2️⃣ تیکتی (خرید با Telegram Stars)\n\nعدد 1 یا 2 را بفرستید:`, {
-      parse_mode: 'Markdown',
-      reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
-    });
-  }
-  // مرحله ۴: نوع قرعه‌کشی
-  else if (state.step === 'TYPE') {
-    const trimmed = text.trim();
-    if (trimmed === '1') {
-      state.data.type = 'FREE';
-      state.step = 'TIME';
-      bot.sendMessage(chatId, `⏰ مدت زمان قرعه‌کشی به **دقیقه** را وارد کنید (مثلاً: 60):`, {
+  switch (state.step) {
+    case 'PRIZE':
+      state.data.prize = cleanText;
+      state.step = 'DESC';
+      bot.sendMessage(chatId, `✅ جایزه ثبت شد.\n\n📝 **مرحله ۳ از ۵:**\nتوضیحات قرعه‌کشی را بنویسید (اگر ندارید، کلمه «رد» را بفرستید):`, {
         parse_mode: 'Markdown',
         reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
       });
-    } else if (trimmed === '2') {
-      state.data.type = 'TICKET';
-      state.step = 'TICKET_DETAILS';
-      bot.sendMessage(chatId, `🎫 فرمت قیمت و تعداد کل تیکت‌ها را با فاصله بفرستید:\nمثال: \`5 10\` (یعنی ۵ استارز و ۱۰ تیکت کل)`, {
+      break;
+
+    case 'DESC':
+      state.data.description = cleanText === 'رد' ? '' : cleanText;
+      state.step = 'TYPE';
+      bot.sendMessage(chatId, `✅ توضیحات ثبت شد.\n\n⚙️ **مرحله ۴ از ۵:**\nنوع قرعه‌کشی را انتخاب کنید:\n1️⃣ رایگان (با لینک دعوت)\n2️⃣ تیکتی (خرید با Telegram Stars)\n\nلطفاً عدد 1 یا 2 را بفرستید:`, {
         parse_mode: 'Markdown',
         reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
       });
-    } else {
-      bot.sendMessage(chatId, `⚠️ لطفاً فقط عدد 1 یا 2 را بفرستید.`);
-    }
-  }
-  // دریافت جزئیات تیکت‌ها (اصلاح‌شده و ایمن)
-  else if (state.step === 'TICKET_DETAILS') {
-    const parts = text.trim().split(/\s+/);
-    if (parts.length >= 2) {
-      state.data.ticketPrice = parseInt(parts[0]);
-      state.data.maxTickets = parseInt(parts[1]);
-      state.step = 'CHANNEL';
-      bot.sendMessage(chatId, `✅ جزئیات تیکت ثبت شد.\n\n📢 **مرحله ۵ (آخر):**\nآیدی کانال یا گروه مقصد را بفرستید (مثلاً: \`@ChannelName\`):`, {
-        parse_mode: 'Markdown',
-        reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
-      });
-    } else {
-      bot.sendMessage(chatId, `⚠️ فرمت اشتباه است. لطفاً دو عدد با فاصله بفرستید. مثال: \`5 10\``, { parse_mode: 'Markdown' });
-    }
-  }
-  // دریافت زمان (برای حالت رایگان)
-  else if (state.step === 'TIME') {
-    const minutes = parseInt(text.trim());
-    if (!isNaN(minutes)) {
-      state.data.durationMinutes = minutes;
-      state.step = 'CHANNEL';
-      bot.sendMessage(chatId, `✅ زمان ثبت شد.\n\n📢 **مرحله ۵ (آخر):**\nآیدی کانال یا گروه مقصد را بفرستید (مثلاً: \`@ChannelName\`):`, {
-        parse_mode: 'Markdown',
-        reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
-      });
-    } else {
-      bot.sendMessage(chatId, `⚠️ لطفاً یک عدد معتبر به دقیقه وارد کنید.`);
-    }
-  }
-  // مرحله آخر: کانال مقصد و انتشار نهایی
-  else if (state.step === 'CHANNEL') {
-    const channel = text.trim();
-    state.data.channel = channel;
+      break;
 
-    const giveawayId = 'gw_' + Date.now();
-    giveaways[giveawayId] = state.data;
-    resetAdmin(chatId);
-
-    try {
-      const botInfo = await bot.getMe();
-      const sentMsg = await bot.sendPhoto(channel, state.data.bannerPhotoId, {
-        caption: `🎁 **قرعه‌کشی بزرگ: ${state.data.prize}**\n\n📝 ${state.data.description || 'بدون توضیحات'}\n\n👥 تعداد شرکت‌کنندگان: 0\n${state.data.type === 'TICKET' ? `🎫 تیکت‌ها: 0 از ${state.data.maxTickets}` : ''}`,
-        parse_mode: 'Markdown',
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: '🚀 ورود به ربات و شرکت', url: `https://t.me/${botInfo.username}?start=${giveawayId}` }]
-          ]
-        }
-      });
-
-      state.data.bannerMessageId = sentMsg.message_id;
-      bot.sendMessage(chatId, `🎉 قرعه‌کشی با موفقیت در کانال ${channel} منتشر شد!`);
-
-      if (state.data.type === 'FREE' && state.data.durationMinutes) {
-        setTimeout(async () => {
-          await finishGiveaway(giveawayId);
-        }, state.data.durationMinutes * 60 * 1000);
+    case 'TYPE':
+      if (cleanText === '1') {
+        state.data.type = 'FREE';
+        state.step = 'TIME';
+        bot.sendMessage(chatId, `⏰ مدت زمان قرعه‌کشی به **دقیقه** را وارد کنید (مثلاً: 60):`, {
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
+        });
+      } else if (cleanText === '2') {
+        state.data.type = 'TICKET';
+        state.step = 'TICKET_DETAILS';
+        bot.sendMessage(chatId, `🎫 فرمت قیمت و تعداد کل تیکت‌ها را با فاصله بفرستید:\nمثال: \`5 10\` (یعنی ۵ استارز و ۱۰ تیکت کل)`, {
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
+        });
+      } else {
+        bot.sendMessage(chatId, `⚠️ لطفاً فقط عدد 1 یا 2 را بفرستید.`);
       }
-    } catch (e) {
-      bot.sendMessage(chatId, `❌ خطا در ارسال به کانال (مطمئن شوید ربات در کانال ادمین است): ${e.message}`);
-    }
+      break;
+
+    case 'TICKET_DETAILS':
+      const parts = cleanText.split(/\s+/);
+      if (parts.length >= 2) {
+        state.data.ticketPrice = parseInt(parts[0]);
+        state.data.maxTickets = parseInt(parts[1]);
+        state.step = 'CHANNEL';
+        bot.sendMessage(chatId, `✅ جزئیات تیکت ثبت شد.\n\n📢 **مرحله ۵ (آخر):**\nآیدی کانال یا گروه مقصد را بفرستید (مثلاً: \`@ChannelName\`):`, {
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
+        });
+      } else {
+        bot.sendMessage(chatId, `⚠️ فرمت اشتباه است. مثال: \`5 10\``, { parse_mode: 'Markdown' });
+      }
+      break;
+
+    case 'TIME':
+      const minutes = parseInt(cleanText);
+      if (!isNaN(minutes)) {
+        state.data.durationMinutes = minutes;
+        state.step = 'CHANNEL';
+        bot.sendMessage(chatId, `✅ زمان ثبت شد.\n\n📢 **مرحله ۵ (آخر):**\nآیدی کانال یا گروه مقصد را بفرستید (مثلاً: \`@ChannelName\`):`, {
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
+        });
+      } else {
+        bot.sendMessage(chatId, `⚠️ لطفاً یک عدد معتبر به دقیقه وارد کنید.`);
+      }
+      break;
+
+    case 'CHANNEL':
+      const channel = cleanText;
+      state.data.channel = channel;
+
+      const giveawayId = 'gw_' + Date.now();
+      giveaways[giveawayId] = state.data;
+      delete adminStates[chatId];
+
+      try {
+        const botInfo = await bot.getMe();
+        const sentMsg = await bot.sendPhoto(channel, state.data.bannerPhotoId, {
+          caption: `🎁 **قرعه‌کشی بزرگ: ${state.data.prize}**\n\n📝 ${state.data.description || 'بدون توضیحات'}\n\n👥 تعداد شرکت‌کنندگان: 0\n${state.data.type === 'TICKET' ? `🎫 تیکت‌ها: 0 از ${state.data.maxTickets}` : ''}`,
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: '🚀 ورود به ربات و شرکت', url: `https://t.me/${botInfo.username}?start=${giveawayId}` }]
+            ]
+          }
+        });
+
+        state.data.bannerMessageId = sentMsg.message_id;
+        bot.sendMessage(chatId, `🎉 قرعه‌کشی با موفقیت در کانال ${channel} منتشر شد!`);
+
+        if (state.data.type === 'FREE' && state.data.durationMinutes) {
+          setTimeout(async () => {
+            await finishGiveaway(giveawayId);
+          }, state.data.durationMinutes * 60 * 1000);
+        }
+      } catch (e) {
+        bot.sendMessage(chatId, `❌ خطا در ارسال به کانال (مطمئن شوید ربات در کانال ادمین است): ${e.message}`);
+      }
+      break;
   }
 });
 
