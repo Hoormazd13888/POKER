@@ -97,7 +97,7 @@ bot.on('photo', async (msg) => {
   }
 });
 
-// مدیریت مراحل متنی ویزارد ادمین با پایداری کامل
+// مدیریت دقیق تمام مراحل متنی ادمین
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
