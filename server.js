@@ -45,7 +45,6 @@ function sendAdminMenu(chatId) {
   });
 }
 
-// مدیریت کلیک روی دکمه‌های شیشه‌ای (کاملاً ایمن و اصلاح‌شده)
 bot.on('callback_query', (query) => {
   const chatId = query.message.chat.id;
   const userId = query.from.id;
@@ -104,7 +103,6 @@ bot.on('callback_query', (query) => {
   }
 });
 
-// مدیریت پیام‌ها و عکس‌ها برای ادمین
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
@@ -175,26 +173,6 @@ bot.on('message', async (msg) => {
       }
       break;
 
-    case 'TYPE':
-      if (cleanText === '1' || cleanText.includes('رایگان')) {
-        state.data.type = 'FREE';
-        state.step = 'TIME';
-        bot.sendMessage(chatId, `⏰ مدت زمان قرعه‌کشی به **دقیقه** را وارد کنید (مثلاً: 60):`, {
-          parse_mode: 'Markdown',
-          reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
-        });
-      } else if (cleanText === '2' || cleanText.includes('تیکت')) {
-        state.data.type = 'TICKET';
-        state.step = 'TICKET_DETAILS';
-        bot.sendMessage(chatId, `🎫 قیمت هر تیکت و تعداد کل تیکت‌ها را با فاصله بفرستید:\nمثال: \`5 3\` (یعنی ۵ استارز و ۳ تیکت کل)`, {
-          parse_mode: 'Markdown',
-          reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
-        });
-      } else {
-        bot.sendMessage(chatId, `⚠️ لطفاً روی یکی از دکمه‌های بالا کلیک کنید.`);
-      }
-      break;
-
     case 'TICKET_DETAILS':
       const numbers = cleanText.match(/\d+/g);
       if (numbers && numbers.length >= 2) {
@@ -226,6 +204,9 @@ bot.on('message', async (msg) => {
 
     case 'CHANNELS':
       const channels = text.split('\n').map(c => c.trim()).filter(c => c.length > 0);
+      if (channels.length === 0) {
+        return bot.sendMessage(chatId, `⚠️ لطفاً حداقل یک آیدی یا لینک کانال معتبر بفرستید.`);
+      }
       state.data.channels = channels;
 
       const giveawayId = 'gw_' + Math.random().toString(36).substring(2, 9);
@@ -390,3 +371,4 @@ async function finishGiveaway(giveawayId) {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => { console.log(`Bot running on port ${PORT}`); });
+                  
