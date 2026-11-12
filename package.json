@@ -1,14 +1,14 @@
 {
-  "name": "ton-price-channel-bot",
-  "version": "1.0.0",
-  "description": "TON Price Bot with Admin Panel, Tonkeeper Payments, and Subscriptions",
+  "name": "ton-arena-roulette-bot",
+  "version": "5.0.0",
+  "description": "Telegram Mini-App Casino Bot with Arena, Roulette, and Wallet",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.18.2",
-    "node-telegram-bot-api": "^0.65.1",
-    "node-fetch": "^2.6.9"
+    "socket.io": "^4.7.4",
+    "node-telegram-bot-api": "^0.65.1"
   }
 }
