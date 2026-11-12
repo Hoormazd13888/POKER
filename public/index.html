@@ -1,375 +1,928 @@
+
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Arena & Roulette</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script src="/socket.io/socket.io.js"></script>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
-    body { background-color: #080511; color: #ffffff; display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding-bottom: 80px; user-select: none; }
-    .view { display: none; width: 100%; max-width: 420px; padding: 16px; flex-direction: column; align-items: center; }
-    .view.active { display: flex; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#080611">
 
-    .top-bar { width: 100%; max-width: 420px; display: flex; justify-content: space-between; align-items: center; background: #130b26; padding: 12px 16px; border-bottom: 1px solid #281750; margin-bottom: 16px; }
-    .balance-badge { background: #1f113a; padding: 6px 12px; border-radius: 12px; font-weight: bold; color: #00E5FF; font-size: 14px; border: 1px solid #3d2275; display: flex; align-items: center; gap: 6px; }
+<title>ARENA ARCADE</title>
 
-    .home-banner { background: linear-gradient(135deg, #7c3aed, #4f46e5); width: 100%; padding: 20px; border-radius: 20px; font-weight: bold; margin-bottom: 16px; text-align: center; box-shadow: 0 8px 20px rgba(124, 58, 237, 0.3); }
-    .game-cards-grid { display: grid; grid-template-columns: 1fr; gap: 14px; width: 100%; }
-    .game-card { background: #130b26; border-radius: 20px; padding: 20px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border: 1px solid #281750; }
-    .card-arena { border-color: #7c3aed; background: linear-gradient(135deg, #180e30, #0f0820); }
-    .card-wheel { border-color: #00E5FF; background: linear-gradient(135deg, #0b1a26, #070f17); }
-    .card-title { font-size: 20px; font-weight: bold; margin-bottom: 4px; }
-    .card-desc { font-size: 13px; color: #94a3b8; }
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 
-    .game-header { width: 100%; display: flex; justify-content: space-between; align-items: center; background: #130b26; padding: 12px 16px; border-radius: 14px; margin-bottom: 14px; border: 1px solid #281750; }
-    .pot-box { font-size: 16px; font-weight: bold; color: #00E5FF; }
-    .timer-box { background: #1f113a; padding: 6px 12px; border-radius: 10px; font-weight: bold; color: #FFD600; font-size: 13px; }
+<style>
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
-    .wheel-container, .arena-box { position: relative; width: 260px; height: 260px; margin: 10px 0 20px; display: flex; justify-content: center; align-items: center; }
-    .pointer { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-top: 22px solid #FFD600; z-index: 10; }
-    canvas { border-radius: 50%; box-shadow: 0 0 25px rgba(124, 58, 237, 0.4); transition: transform 4.8s cubic-bezier(0.15, 0.85, 0.25, 1); }
-    
-    .arena-box { background: linear-gradient(135deg, #180e30, #0b0511); border-radius: 20px; border: 2px solid #7c3aed; overflow: hidden; box-shadow: 0 0 25px rgba(124, 58, 237, 0.3); }
-    .ball { position: absolute; width: 24px; height: 24px; background: #00E5FF; border-radius: 50%; box-shadow: 0 0 15px #00E5FF; transition: all 0.5s ease; }
+body {
+  background: #080611;
+  color: white;
+  font-family: Tahoma, Arial, sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
 
-    .finance-card { width: 100%; background: #130b26; border: 1px solid #281750; border-radius: 14px; padding: 12px; display: flex; justify-content: space-between; margin-bottom: 14px; font-size: 13px; text-align: center; }
-    .finance-item { flex: 1; border-left: 1px solid #281750; }
-    .finance-item:first-child { border-left: none; }
+button {
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
 
-    .controls { width: 100%; background: #130b26; padding: 14px; border-radius: 16px; border: 1px solid #281750; margin-bottom: 14px; }
-    .bet-presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px; }
-    .preset-btn { background: #1f113a; border: 1px solid #3d2275; color: #fff; padding: 8px 0; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px; }
-    .custom-bet { display: flex; gap: 8px; }
-    input { flex: 1; background: #080511; border: 1px solid #3d2275; color: #fff; padding: 10px; border-radius: 8px; font-size: 15px; outline: none; }
-    .join-btn { background: linear-gradient(135deg, #7c3aed, #4f46e5); border: none; color: #fff; font-weight: bold; padding: 0 20px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+.app {
+  max-width: 520px;
+  margin: auto;
+  padding: 16px;
+}
 
-    .players-list { width: 100%; display: flex; flex-direction: column; gap: 6px; }
-    .player-card { background: #130b26; padding: 10px 14px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; border-right: 4px solid #fff; font-size: 14px; border: 1px solid #281750; }
-    .player-info { display: flex; align-items: center; gap: 10px; }
-    .player-avatar { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; background: #333; }
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 4px 22px;
+}
 
-    .wallet-box { background: #130b26; border: 1px solid #281750; width: 100%; padding: 20px; border-radius: 16px; text-align: center; margin-bottom: 16px; }
-    .wallet-btns { display: flex; gap: 10px; margin-top: 14px; }
-    .wallet-btn { width: 100%; padding: 12px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; margin-top: 8px; }
-    .deposit-btn { background: #00E676; color: #000; }
-    .withdraw-btn { background: #FF3D71; color: #fff; }
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 
-    .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 70px; background: #130b26; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #281750; z-index: 1000; }
-    .nav-item { display: flex; flex-direction: column; align-items: center; color: #64748b; cursor: pointer; font-size: 12px; font-weight: bold; }
-    .nav-item.active { color: #00E5FF; }
-    .nav-item span { font-size: 20px; margin-bottom: 2px; }
+.logo-icon {
+  width: 45px;
+  height: 45px;
+  border-radius: 15px;
+  background: linear-gradient(135deg,#a100ff,#4900a9);
+  display: grid;
+  place-items: center;
+  font-size: 25px;
+  box-shadow: 0 0 22px #8900ff66;
+}
 
-    .winner-banner { position: fixed; top: 25%; background: rgba(19, 11, 38, 0.98); border: 2px solid #00E676; padding: 20px 28px; border-radius: 16px; text-align: center; z-index: 2000; display: none; }
-    .back-link { color: #94a3b8; font-size: 13px; margin-top: 10px; cursor: pointer; text-decoration: underline; }
-  </style>
+.logo h2 {
+  font-size: 20px;
+  letter-spacing: 2px;
+}
+
+.logo small {
+  color: #a89bbd;
+}
+
+.online {
+  background: #13261e;
+  color: #39e99a;
+  padding: 8px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+}
+
+.hero {
+  padding: 24px;
+  border: 1px solid #54218c;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 50% 20%,#5810a5 0%,transparent 55%),
+    linear-gradient(145deg,#1a0c2d,#0d0a18);
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+.hero .crown {
+  font-size: 42px;
+}
+
+.hero h1 {
+  font-size: 35px;
+  letter-spacing: 3px;
+  color: #d38aff;
+  text-shadow: 0 0 20px #a000ff;
+}
+
+.hero p {
+  color: #b6a8c9;
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.balance {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #141021;
+  border: 1px solid #302047;
+  padding: 17px;
+  border-radius: 17px;
+  margin-bottom: 20px;
+}
+
+.balance strong {
+  color: #cb83ff;
+  font-size: 21px;
+}
+
+.section-title {
+  font-size: 16px;
+  margin: 22px 0 12px;
+}
+
+.game-card {
+  background: linear-gradient(145deg,#211032,#100c1c);
+  border: 1px solid #6632a1;
+  border-radius: 20px;
+  padding: 18px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.game-art {
+  width: 82px;
+  height: 82px;
+  flex-shrink: 0;
+  border-radius: 18px;
+  background: linear-gradient(145deg,#9c19ff,#300064);
+  display: grid;
+  place-items: center;
+  font-size: 38px;
+  box-shadow: 0 0 20px #8300ff55;
+}
+
+.game-info {
+  flex: 1;
+}
+
+.game-info h3 {
+  font-size: 17px;
+  margin-bottom: 7px;
+}
+
+.game-info p {
+  font-size: 11px;
+  color: #ad9cbe;
+  line-height: 1.8;
+}
+
+.play-btn, .main-btn {
+  background: linear-gradient(100deg,#9b16f4,#5800b9);
+  color: white;
+  border-radius: 12px;
+  padding: 12px 18px;
+  font-weight: bold;
+  box-shadow: 0 0 15px #8100ff44;
+}
+
+.play-btn {
+  margin-top: 9px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.stat {
+  background: #151020;
+  border: 1px solid #35244c;
+  border-radius: 15px;
+  padding: 15px;
+  text-align: center;
+}
+
+.stat small {
+  color: #a99ab9;
+}
+
+.stat strong {
+  display: block;
+  font-size: 20px;
+  margin-top: 8px;
+  color: #d38aff;
+}
+
+.nav {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  background: #151020;
+  border: 1px solid #40265f;
+  border-radius: 18px;
+  padding: 8px;
+  margin-top: 22px;
+  gap: 5px;
+}
+
+.nav button {
+  background: transparent;
+  color: #b8a9ca;
+  padding: 12px 3px;
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+.nav button.active {
+  background: #57218c;
+  color: white;
+}
+
+/* GAME SCREEN */
+
+#gameScreen {
+  display: none;
+}
+
+.game-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.back-btn {
+  background: #21132f;
+  color: white;
+  padding: 11px 17px;
+  border-radius: 12px;
+}
+
+.score-box {
+  background: #21132f;
+  padding: 11px 18px;
+  border-radius: 12px;
+  color: #d78cff;
+  font-weight: bold;
+}
+
+.canvas-wrap {
+  width: 100%;
+  position: relative;
+  border: 2px solid #7627c4;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 0 25px #8200ff33;
+  background: #090512;
+}
+
+#gameCanvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: none;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: #080611d9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px;
+}
+
+.overlay h2 {
+  color: #dc9aff;
+  font-size: 27px;
+  margin-bottom: 10px;
+}
+
+.overlay p {
+  color: #c4b3d4;
+  font-size: 13px;
+  line-height: 2;
+  margin-bottom: 20px;
+}
+
+.controls {
+  display: flex;
+  justify-content: center;
+  gap: 25px;
+  margin-top: 18px;
+}
+
+.control-btn {
+  width: 75px;
+  height: 60px;
+  border-radius: 16px;
+  background: #28133e;
+  color: white;
+  border: 1px solid #8c38d2;
+  font-size: 25px;
+  touch-action: none;
+}
+
+.control-btn:active {
+  background: #8b19dd;
+}
+
+.result {
+  color: #43e99b;
+  font-size: 22px;
+  font-weight: bold;
+  margin: 12px 0;
+}
+
+.page {
+  display: none;
+}
+
+.page.active {
+  display: block;
+}
+
+.leader-row {
+  display: flex;
+  justify-content: space-between;
+  background: #171022;
+  padding: 15px;
+  border-radius: 13px;
+  margin: 9px 0;
+  border: 1px solid #35244b;
+}
+
+.leader-row strong {
+  color: #d38aff;
+}
+
+.notice {
+  font-size: 11px;
+  color: #988aa8;
+  text-align: center;
+  margin-top: 18px;
+  line-height: 1.9;
+}
+</style>
 </head>
+
 <body>
+<div class="app">
 
-  <div class="top-bar">
-    <div style="font-weight: bold; font-size: 16px; color:#7c3aed;">👑 Arena Bot</div>
-    <div class="balance-badge" id="userBalance">💎 0 TON</div>
-  </div>
-
-  <div id="homeView" class="view active">
-    <div class="home-banner">⚡ به آرنا خوش آمدید!<br>جایی برای برد بزرگ با تون‌کوین[span_1](start_span)[span_1](end_span)</div>
-    <div class="game-cards-grid">
-      <div class="game-card card-arena" onclick="switchTab('arenaView')">
-        <div>
-          <div class="card-title">⚔️ آرنا</div>
-          <div class="card-desc">نبرد مربعی با حرکت توپ و درصد برد[span_2](start_span)[span_2](end_span)</div>
-        </div>
-        <div style="font-size: 24px;">➡️</div>
-      </div>
-      <div class="game-card card-wheel" onclick="switchTab('rouletteView')">
-        <div>
-          <div class="card-title">🎯 رولت</div>
-          <div class="card-desc">چرخ شانس کلاسیک با کسر ۵٪ مالیات[span_3](start_span)[span_3](end_span)</div>
-        </div>
-        <div style="font-size: 24px;">➡️</div>
-      </div>
+<!-- HEADER -->
+<header class="header">
+  <div class="logo">
+    <div class="logo-icon">♛</div>
+    <div>
+      <h2>ARENA</h2>
+      <small>ARCADE GAME</small>
     </div>
   </div>
+  <div class="online">● ONLINE</div>
+</header>
 
-  <div id="rouletteView" class="view">
-    <div class="game-header">
-      <div>کل بانک: <span class="pot-box" id="roulettePot">0 TON</span></div>
-      <div class="timer-box" id="rouletteTimer">منتظر نفر دوم...</div>
-    </div>
+<!-- HOME -->
+<section id="homePage" class="page active">
 
-    <div class="wheel-container">
-      <div class="pointer"></div>
-      <canvas id="wheelCanvas" width="260" height="260"></canvas>
-    </div>
-
-    <div class="finance-card">
-      <div class="finance-item">مالیات راند (5%):<br><strong id="rouletteTax" style="color:#FF3D71;">0 TON</strong></div>
-      <div class="finance-item">مبلغ برنده:<br><strong id="roulettePrize" style="color:#00E676;">0 TON</strong></div>
-    </div>
-
-    <div class="controls">
-      <div class="bet-presets">
-        <button class="preset-btn" onclick="sendRouletteBet(10)">10 TON</button>
-        <button class="preset-btn" onclick="sendRouletteBet(50)">50 TON</button>
-        <button class="preset-btn" onclick="sendRouletteBet(100)">100 TON</button>
-        <button class="preset-btn" onclick="sendRouletteBet(500)">500 TON</button>
-      </div>
-      <div class="custom-bet">
-        <input type="number" id="rouletteInput" min="1" placeholder="مبلغ دلخواه (TON)" />
-        <button class="join-btn" onclick="sendCustomRouletteBet()">ورود</button>
-      </div>
-    </div>
-
-    <div class="players-list" id="roulettePlayersList"></div>
-    <div class="back-link" onclick="switchTab('homeView')">← بازگشت به منو</div>
+  <div class="hero">
+    <div class="crown">👑</div>
+    <h1>ARENA</h1>
+    <p>PLAY · COMPETE · WIN</p>
+    <p>به دنیای بازی‌های آرکید خوش آمدید</p>
   </div>
 
-  <div id="arenaView" class="view">
-    <div class="game-header">
-      <div>کل بانک: <span class="pot-box" id="arenaPot">0 TON</span></div>
-      <div class="timer-box" id="arenaTimer">منتظر نفر دوم...</div>
-    </div>
-
-    <div class="arena-box" id="arenaBox">
-      <div class="ball" id="arenaBall" style="top: 50%; left: 50%;"></div>
-      <div style="position: absolute; font-size: 13px; font-weight: bold; color: rgba(255,255,255,0.7);" id="arenaCenterText">آماده راند</div>
-    </div>
-
-    <div class="finance-card">
-      <div class="finance-item">مالیات راند (5%):<br><strong id="arenaTax" style="color:#FF3D71;">0 TON</strong></div>
-      <div class="finance-item">مبلغ برنده:<br><strong id="arenaPrize" style="color:#00E676;">0 TON</strong></div>
-    </div>
-
-    <div class="controls">
-      <div class="bet-presets">
-        <button class="preset-btn" onclick="sendArenaBet(10)">10 TON</button>
-        <button class="preset-btn" onclick="sendArenaBet(50)">50 TON</button>
-        <button class="preset-btn" onclick="sendArenaBet(100)">100 TON</button>
-        <button class="preset-btn" onclick="sendArenaBet(500)">500 TON</button>
-      </div>
-      <div class="custom-bet">
-        <input type="number" id="arenaInput" min="1" placeholder="مبلغ دلخواه (TON)" />
-        <button class="join-btn" onclick="sendCustomArenaBet()">ورود به راند</button>
-      </div>
-    </div>
-
-    <div class="players-list" id="arenaPlayersList"></div>
-    <div class="back-link" onclick="switchTab('homeView')">← بازگشت به منو</div>
+  <div class="balance">
+    <span>💎 امتیاز شما</span>
+    <strong id="balance">0 XP</strong>
   </div>
 
-  <div id="walletView" class="view">
-    <div class="wallet-box">
-      <div style="color: #94a3b8; font-size: 14px; margin-bottom: 6px;">موجودی حساب شما</div>
-      <div style="font-size: 28px; font-weight: bold; color: #00E5FF;" id="walletBalanceVal">0 TON</div>
-      
-      <div style="margin-top: 16px;">
-        <input type="number" id="depositAmount" min="1" placeholder="مبلغ واریز (TON)" style="margin-bottom:8px;" />
-        <button class="wallet-btn deposit-btn" onclick="openDeposit()">واریز مستقیم با Tonkeeper 🚀</button>
-      </div>
+  <h3 class="section-title">🎮 بازی‌های پیشنهادی</h3>
 
-      <div style="margin-top: 20px; border-top: 1px solid #281750; padding-top: 14px;">
-        <input type="number" id="withdrawAmount" min="1" placeholder="مبلغ برداشت (TON)" style="margin-bottom:8px;" />
-        <input type="text" id="withdrawAddress" placeholder="آدرس والت تونکیپر شما" style="margin-bottom:8px;" />
-        <button class="wallet-btn withdraw-btn" onclick="requestWithdraw()">ثبت درخواست برداشت</button>
-      </div>
+  <div class="game-card">
+    <div class="game-art">⚡</div>
+    <div class="game-info">
+      <h3>DODGE ARENA</h3>
+      <p>از موانع جاخالی بده و رکورد بزن!</p>
+      <button class="play-btn" onclick="openGame()">
+        شروع بازی ←
+      </button>
     </div>
   </div>
 
-  <div class="winner-banner" id="winnerBanner">
-    <h2 style="color:#00E676; margin-bottom:6px;">🎉 برنده راند!</h2>
-    <p id="winnerText" style="font-size:15px; font-weight:bold;"></p>
+  <div class="game-card">
+    <div class="game-art">🎯</div>
+    <div class="game-info">
+      <h3>COMING SOON</h3>
+      <p>بازی جدید به زودی اضافه می‌شود.</p>
+    </div>
   </div>
 
-  <div class="nav-bar">
-    <div class="nav-item active" onclick="switchTab('homeView', this)"><span>🏠</span>خانه</div>
-    <div class="nav-item" onclick="switchTab('arenaView', this)"><span>⚔️</span>آرنا</div>
-    <div class="nav-item" onclick="switchTab('rouletteView', this)"><span>🎯</span>رولت</div>
-    <div class="nav-item" onclick="switchTab('walletView', this)"><span>💳</span>کیف پول</div>
+  <div class="stats">
+    <div class="stat">
+      <small>🏆 بهترین رکورد</small>
+      <strong id="best">0</strong>
+    </div>
+    <div class="stat">
+      <small>🎮 تعداد بازی</small>
+      <strong id="games">0</strong>
+    </div>
+  </div>
+</section>
+
+<!-- GAME -->
+<section id="gameScreen">
+
+  <div class="game-top">
+    <button class="back-btn" onclick="closeGame()">← بازگشت</button>
+    <div class="score-box">
+      SCORE: <span id="score">0</span>
+    </div>
   </div>
 
-  <script>
-    const socket = io();
-    const tg = window.Telegram?.WebApp;
-    if (tg) tg.expand();
+  <div class="canvas-wrap">
 
-    const user = tg?.initDataUnsafe?.user || {
-      id: '123456789',
-      first_name: 'Player_Test',
-      photo_url: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f464.png'
-    };
+    <canvas id="gameCanvas" width="360" height="540"></canvas>
 
-    let serverWallet = '';
+    <div class="overlay" id="gameOverlay">
+      <h2 id="overlayTitle">DODGE ARENA</h2>
+      <p id="overlayText">
+        موانع را رد کن و تا جای ممکن زنده بمان.
+        <br>
+        برای حرکت از دکمه‌های پایین استفاده کن.
+      </p>
+      <button class="main-btn" onclick="startGame()">
+        شروع بازی ⚡
+      </button>
+    </div>
 
-    socket.emit('getData', user.id);
+  </div>
 
-    socket.on('initData', (data) => {
-      serverWallet = data.adminWallet;
-      updateBalance(data.balance);
+  <div class="controls">
+    <button class="control-btn" id="leftBtn">←</button>
+    <button class="control-btn" id="rightBtn">→</button>
+  </div>
+
+  <p class="notice">
+    کنترل: لمس دکمه‌ها یا کلیدهای جهت‌دار
+  </p>
+
+</section>
+
+<!-- LEADERBOARD -->
+<section id="leaderPage" class="page">
+  <div class="hero">
+    <h1>🏆 TOP PLAYERS</h1>
+    <p>برترین بازیکنان آرنا</p>
+  </div>
+
+  <div id="leaderboard">
+    <p class="notice">در حال دریافت اطلاعات...</p>
+  </div>
+</section>
+
+<!-- PROFILE -->
+<section id="profilePage" class="page">
+  <div class="hero">
+    <div class="crown">👤</div>
+    <h2 id="playerName">Player</h2>
+    <p>ARENA MEMBER</p>
+  </div>
+
+  <div class="stat">
+    <small>بهترین امتیاز</small>
+    <strong id="profileBest">0</strong>
+  </div>
+
+  <div class="stat" style="margin-top:12px">
+    <small>تعداد بازی‌ها</small>
+    <strong id="profileGames">0</strong>
+  </div>
+</section>
+
+<!-- NAVIGATION -->
+<nav class="nav" id="navigation">
+  <button class="active" onclick="showPage('homePage',this)">
+    🏠 خانه
+  </button>
+  <button onclick="showPage('leaderPage',this);loadLeaderboard()">
+    🏆 برترین‌ها
+  </button>
+  <button onclick="showPage('profilePage',this)">
+    👤 پروفایل
+  </button>
+</nav>
+
+<p class="notice">
+  ARENA ARCADE © 2026
+  <br>
+  امتیازها صرفاً برای سرگرمی هستند.
+</p>
+
+</div>
+
+<script>
+// TELEGRAM
+const tg = window.Telegram?.WebApp;
+
+if (tg) {
+  tg.ready();
+  tg.expand();
+  tg.setHeaderColor("#080611");
+  tg.setBackgroundColor("#080611");
+}
+
+const user = tg?.initDataUnsafe?.user;
+
+const playerId = user
+  ? String(user.id)
+  : "guest-" + getGuestId();
+
+const playerName = user
+  ? (user.first_name || "Player").slice(0,20)
+  : "Guest";
+
+function getGuestId() {
+  let id = localStorage.getItem("arena_guest");
+
+  if (!id) {
+    id = "g" + Math.random().toString(36).slice(2);
+    localStorage.setItem("arena_guest",id);
+  }
+
+  return id;
+}
+
+document.getElementById("playerName").textContent = playerName;
+
+let bestScore = 0;
+let totalGames = 0;
+
+async function api(url, options = {}) {
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error("API request failed");
+  }
+
+  return response.json();
+}
+
+// PROFILE
+async function loadProfile() {
+  try {
+    const data = await api(
+      "/api/profile?id=" + encodeURIComponent(playerId)
+    );
+
+    bestScore = data.player.score;
+    totalGames = data.player.games;
+
+    updateProfile();
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+function updateProfile() {
+  document.getElementById("balance").textContent =
+    bestScore + " XP";
+
+  document.getElementById("best").textContent =
+    bestScore;
+
+  document.getElementById("games").textContent =
+    totalGames;
+
+  document.getElementById("profileBest").textContent =
+    bestScore;
+
+  document.getElementById("profileGames").textContent =
+    totalGames;
+}
+
+// NAVIGATION
+function showPage(pageId, button) {
+  document.querySelectorAll(".page").forEach(page => {
+    page.classList.remove("active");
+  });
+
+  document.getElementById(pageId).classList.add("active");
+
+  document.querySelectorAll(".nav button").forEach(btn => {
+    btn.classList.remove("active");
+  });
+
+  button.classList.add("active");
+}
+
+function openGame() {
+  document.getElementById("homePage").classList.remove("active");
+  document.getElementById("leaderPage").classList.remove("active");
+  document.getElementById("profilePage").classList.remove("active");
+
+  document.getElementById("gameScreen").style.display = "block";
+  document.getElementById("navigation").style.display = "none";
+
+  resetCanvas();
+}
+
+function closeGame() {
+  running = false;
+
+  document.getElementById("gameScreen").style.display = "none";
+  document.getElementById("navigation").style.display = "grid";
+
+  showPage("homePage",document.querySelector(".nav button"));
+}
+
+// LEADERBOARD
+async function loadLeaderboard() {
+  const container = document.getElementById("leaderboard");
+
+  try {
+    const data = await api("/api/leaderboard");
+
+    container.innerHTML = "";
+
+    if (!data.leaderboard.length) {
+      container.textContent = "هنوز رکوردی ثبت نشده است.";
+      return;
+    }
+
+    data.leaderboard.forEach(player => {
+      const row = document.createElement("div");
+      row.className = "leader-row";
+
+      const name = document.createElement("span");
+      name.textContent =
+        `${player.rank}. ${player.name}`;
+
+      const score = document.createElement("strong");
+      score.textContent = player.score + " XP";
+
+      row.append(name,score);
+      container.appendChild(row);
     });
 
-    socket.on('balanceUpdate', (bal) => {
-      updateBalance(bal);
+  } catch (error) {
+    container.textContent = "خطا در دریافت جدول.";
+  }
+}
+
+// GAME ENGINE
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+let running = false;
+let score = 0;
+let player;
+let obstacles = [];
+let particles = [];
+let lastTime = 0;
+let spawnTimer = 0;
+let animationId = null;
+let keys = { left:false, right:false };
+
+function resetCanvas() {
+  running = false;
+
+  if (animationId) cancelAnimationFrame(animationId);
+
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  drawBackground();
+
+  player = {
+    x: 180,
+    y: 470,
+    width: 32,
+    height: 32,
+    speed: 260
+  };
+
+  obstacles = [];
+  particles = [];
+
+  document.getElementById("score").textContent = "0";
+  document.getElementById("gameOverlay").style.display = "flex";
+  document.getElementById("overlayTitle").textContent = "DODGE ARENA";
+  document.getElementById("overlayText").textContent =
+    "از موانع جاخالی بده و رکورد بزن!";
+}
+
+function drawBackground() {
+  ctx.fillStyle = "#090512";
+  ctx.fillRect(0,0,360,540);
+
+  ctx.strokeStyle = "#32134d";
+  ctx.lineWidth = 1;
+
+  for(let x=0; x<360; x+=30) {
+    ctx.beginPath();
+    ctx.moveTo(x,0);
+    ctx.lineTo(x,540);
+    ctx.stroke();
+  }
+
+  for(let y=0; y<540; y+=30) {
+    ctx.beginPath();
+    ctx.moveTo(0,y);
+    ctx.lineTo(360,y);
+    ctx.stroke();
+  }
+}
+
+function drawPlayer() {
+  ctx.shadowBlur = 20;
+  ctx.shadowColor = "#b800ff";
+
+  const gradient = ctx.createLinearGradient(
+    player.x,player.y,
+    player.x+32,player.y+32
+  );
+
+  gradient.addColorStop(0,"#e9aaff");
+  gradient.addColorStop(1,"#8000ff");
+
+  ctx.fillStyle = gradient;
+
+  ctx.beginPath();
+  ctx.roundRect(
+    player.x,
+    player.y,
+    player.width,
+    player.height,
+    9
+  );
+
+  ctx.fill();
+  ctx.shadowBlur = 0;
+}
+
+function drawObstacles() {
+  obstacles.forEach(o => {
+    ctx.shadowBlur = 14;
+    ctx.shadowColor = "#ff365f";
+    ctx.fillStyle = "#ff315d";
+
+    ctx.fillRect(o.x,o.y,o.width,o.height);
+
+    ctx.shadowBlur = 0;
+  });
+}
+
+function startGame() {
+  resetCanvas();
+
+  score = 0;
+  running = true;
+  lastTime = performance.now();
+
+  document.getElementById("gameOverlay").style.display = "none";
+
+  animationId = requestAnimationFrame(gameLoop);
+}
+
+function spawnObstacle() {
+  const width = 35 + Math.random()*45;
+
+  obstacles.push({
+    x: Math.random()*(360-width),
+    y: -30,
+    width,
+    height: 18,
+    speed: 190 + Math.min(score*2,220)
+  });
+}
+
+function gameLoop(time) {
+  if (!running) return;
+
+  const dt = Math.min((time-lastTime)/1000,0.04);
+  lastTime = time;
+
+  score += dt * 10;
+
+  document.getElementById("score").textContent =
+    Math.floor(score);
+
+  if(keys.left) player.x -= player.speed*dt;
+  if(keys.right) player.x += player.speed*dt;
+
+  player.x = Math.max(
+    0,
+    Math.min(360-player.width,player.x)
+  );
+
+  spawnTimer += dt;
+
+  if(spawnTimer > Math.max(0.35,0.85-score/150)) {
+    spawnObstacle();
+    spawnTimer = 0;
+  }
+
+  obstacles.forEach(o => {
+    o.y += o.speed*dt;
+  });
+
+  obstacles = obstacles.filter(o => o.y < 560);
+
+  // Collision
+  for(const o of obstacles) {
+    if(
+      player.x < o.x+o.width &&
+      player.x+player.width > o.x &&
+      player.y < o.y+o.height &&
+      player.y+player.height > o.y
+    ) {
+      endGame();
+      return;
+    }
+  }
+
+  drawBackground();
+  drawObstacles();
+  drawPlayer();
+
+  animationId = requestAnimationFrame(gameLoop);
+}
+
+async function endGame() {
+  running = false;
+
+  const finalScore = Math.floor(score);
+
+  totalGames++;
+
+  try {
+    const data = await api("/api/score",{
+      method:"POST",
+      body:JSON.stringify({
+        id:playerId,
+        name:playerName,
+        score:finalScore
+      })
     });
 
-    socket.on('successMsg', (msg) => { alert(msg); });
-    socket.on('errorMsg', (msg) => { alert(msg); });
+    bestScore = data.bestScore;
+    updateProfile();
 
-    function updateBalance(bal) {
-      document.getElementById('userBalance').innerText = `💎 ${bal.toLocaleString()} TON`;
-      document.getElementById('walletBalanceVal').innerText = `${bal.toLocaleString()} TON`;
-    }
+  } catch(error) {
+    console.error(error);
+  }
 
-    function switchTab(viewId, el) {
-      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-      document.getElementById(viewId).classList.add('active');
-      if (el) {
-        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-        el.classList.add('active');
-      }
-    }
+  document.getElementById("overlayTitle").textContent =
+    "GAME OVER";
 
-    function openDeposit() {
-      const amount = parseFloat(document.getElementById('depositAmount').value);
-      if (!amount || amount <= 0) { alert('مبلغ معتبر وارد کنید'); return; }
+  document.getElementById("overlayText").innerHTML =
+    `<span class="result">${finalScore} XP</span><br>رکورد این دور`;
 
-      const memo = user.id;
-      const nanoTon = amount * 1e9;
-      const tonkeeperUrl = `https://app.tonkeeper.com/transfer/${serverWallet}?amount=${nanoTon}&text=${memo}`;
+  document.getElementById("gameOverlay").style.display = "flex";
+}
 
-      window.open(tonkeeperUrl, '_blank');
-      alert('پس از تایید تراکنش در تونکیپر، موجودی شما ثبت می‌شود.');
-    }
+// KEYBOARD
+document.addEventListener("keydown",e => {
+  if(e.key === "ArrowLeft" || e.key === "a") {
+    keys.left = true;
+  }
 
-    function requestWithdraw() {
-      const amount = parseFloat(document.getElementById('withdrawAmount').value);
-      const address = document.getElementById('withdrawAddress').value.trim();
-      if (!amount || amount <= 0 || !address) { alert('لطفاً مبلغ و آدرس والت را وارد کنید.'); return; }
+  if(e.key === "ArrowRight" || e.key === "d") {
+    keys.right = true;
+  }
+});
 
-      socket.emit('withdrawRequest', { userId: String(user.id), username: user.first_name, amount, address });
-      document.getElementById('withdrawAmount').value = '';
-      document.getElementById('withdrawAddress').value = '';
-    }
+document.addEventListener("keyup",e => {
+  if(e.key === "ArrowLeft" || e.key === "a") {
+    keys.left = false;
+  }
 
-    const canvas = document.getElementById('wheelCanvas');
-    const ctx = canvas.getContext('2d');
+  if(e.key === "ArrowRight" || e.key === "d") {
+    keys.right = false;
+  }
+});
 
-    function drawWheel(players) {
-      ctx.clearRect(0, 0, 260, 260);
-      if (!players || players.length === 0) {
-        ctx.beginPath(); ctx.arc(130, 130, 125, 0, Math.PI * 2);
-        ctx.fillStyle = '#130b26'; ctx.fill(); return;
-      }
-      players.forEach(p => {
-        const startRad = ((p.startAngle - 90) * Math.PI) / 180;
-        const endRad = ((p.endAngle - 90) * Math.PI) / 180;
-        ctx.beginPath(); ctx.moveTo(130, 130); ctx.arc(130, 130, 125, startRad, endRad);
-        ctx.closePath(); ctx.fillStyle = p.color; ctx.fill();
-        ctx.lineWidth = 2; ctx.strokeStyle = '#080511'; ctx.stroke();
-      });
-    }
+// TOUCH CONTROLS
+function bindControl(id,direction) {
+  const btn = document.getElementById(id);
 
-    socket.on('rouletteState', (state) => {
-      document.getElementById('roulettePot').innerText = `${state.pot} TON`;
-      document.getElementById('rouletteTax').innerText = `${state.tax} TON`;
-      document.getElementById('roulettePrize').innerText = `${state.finalPrize} TON`;
+  btn.addEventListener("pointerdown",e => {
+    e.preventDefault();
+    keys[direction] = true;
+  });
 
-      if (state.players.length < 2) {
-        document.getElementById('rouletteTimer').innerText = 'منتظر نفر دوم...';
-      } else if (state.status === 'COUNTDOWN') {
-        document.getElementById('rouletteTimer').innerText = `شروع: ${state.timer}s`;
-      }
-      if (state.status !== 'SPINNING') drawWheel(state.players);
-
-      const list = document.getElementById('roulettePlayersList');
-      list.innerHTML = '';
-      state.players.forEach(p => {
-        const div = document.createElement('div');
-        div.className = 'player-card';
-        div.style.borderRightColor = p.color;
-        div.innerHTML = `
-          <div class="player-info">
-            <img src="${p.photo || 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f464.png'}" class="player-avatar" />
-            <div><strong>${p.name}</strong> <span style="font-size:12px; color:#94a3b8;">(${p.bet} TON)</span></div>
-          </div>
-          <div style="font-weight:bold; color:${p.color};">${p.percentage}%</div>`;
-        list.appendChild(div);
-      });
+  ["pointerup","pointerleave","pointercancel"].forEach(event => {
+    btn.addEventListener(event,() => {
+      keys[direction] = false;
     });
+  });
+}
 
-    socket.on('rouletteSpinStart', ({ winningAngle, winner, prize }) => {
-      document.getElementById('rouletteTimer').innerText = 'چرخش...';
-      const finalAngle = (360 * 6) + (360 - winningAngle);
-      canvas.style.transition = 'transform 4.8s cubic-bezier(0.15, 0.85, 0.25, 1)';
-      canvas.style.transform = `rotate(${finalAngle}deg)`;
-      setTimeout(() => {
-        document.getElementById('winnerText').innerText = `${winner.name} برنده ${prize} TON شد!`;
-        document.getElementById('winnerBanner').style.display = 'block';
-        setTimeout(() => document.getElementById('winnerBanner').style.display = 'none', 4000);
-      }, 4900);
-    });
+bindControl("leftBtn","left");
+bindControl("rightBtn","right");
 
-    socket.on('arenaState', (state) => {
-      document.getElementById('arenaPot').innerText = `${state.pot} TON`;
-      document.getElementById('arenaTax').innerText = `${state.tax} TON`;
-      document.getElementById('arenaPrize').innerText = `${state.finalPrize} TON`;
+// INIT
+resetCanvas();
+loadProfile();
+</script>
 
-      if (state.players.length < 2) {
-        document.getElementById('arenaTimer').innerText = 'منتظر نفر دوم...';
-        document.getElementById('arenaCenterText').innerText = 'حداقل ۲ نفر';
-      } else if (state.status === 'COUNTDOWN') {
-        document.getElementById('arenaTimer').innerText = `شروع: ${state.timer}s`;
-        document.getElementById('arenaCenterText').innerText = `${state.timer}s`;
-      }
-
-      const list = document.getElementById('arenaPlayersList');
-      list.innerHTML = '';
-      state.players.forEach(p => {
-        const div = document.createElement('div');
-        div.className = 'player-card';
-        div.style.borderRightColor = p.color;
-        div.innerHTML = `
-          <div class="player-info">
-            <img src="${p.photo || 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f464.png'}" class="player-avatar" />
-            <div><strong>${p.name}</strong> <span style="font-size:12px; color:#94a3b8;">(${p.bet} TON)</span></div>
-          </div>
-          <div style="font-weight:bold; color:${p.color};">${p.percentage}%</div>`;
-        list.appendChild(div);
-      });
-    });
-
-    socket.on('arenaSpinStart', ({ winner, prize }) => {
-      document.getElementById('arenaTimer').innerText = 'درحال نبرد...';
-      const ball = document.getElementById('arenaBall');
-      
-      let interval = setInterval(() => {
-        ball.style.top = Math.random() * 80 + '%';
-        ball.style.left = Math.random() * 80 + '%';
-      }, 300);
-
-      setTimeout(() => {
-        clearInterval(interval);
-        document.getElementById('winnerText').innerText = `[آرنا] ${winner.name} برنده ${prize} TON شد!`;
-        document.getElementById('winnerBanner').style.display = 'block';
-        setTimeout(() => document.getElementById('winnerBanner').style.display = 'none', 4000);
-      }, 3800);
-    });
-
-    function sendRouletteBet(amount) { 
-      socket.emit('placeRouletteBet', { userId: String(user.id), username: user.first_name, photoUrl: user.photo_url, amount }); 
-    }
-    function sendCustomRouletteBet() { 
-      const val = parseFloat(document.getElementById('rouletteInput').value); 
-      if(val > 0) { sendRouletteBet(val); document.getElementById('rouletteInput').value = ''; } 
-    }
-
-    function sendArenaBet(amount) { 
-      socket.emit('placeArenaBet', { userId: String(user.id), username: user.first_name, photoUrl: user.photo_url, amount }); 
-    }
-    function sendCustomArenaBet() { 
-      const val = parseFloat(document.getElementById('arenaInput').value); 
-      if(val > 0) { sendArenaBet(val); document.getElementById('arenaInput').value = ''; } 
-    }
-  </script>
 </body>
 </html>
