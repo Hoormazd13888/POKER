@@ -1,12 +1,14 @@
 {
-  "name": "ton-price-bot",
+  "name": "ton-arena-game",
   "version": "1.0.0",
+  "description": "Multiplayer Toncoin Arena Roulette Mini-App",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "node-telegram-bot-api": "^0.65.1",
-    "axios": "^1.6.8"
+    "express": "^4.18.2",
+    "socket.io": "^4.7.4",
+    "cors": "^2.8.5"
   }
 }
