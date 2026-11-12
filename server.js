@@ -11,13 +11,9 @@ let adminId = null;
 let adminStates = {}; 
 let giveaways = {};   
 
-// دستور اختصاصی ادمین برای پنل مدیریت
 bot.onText(/\/admin/, (msg) => {
   const chatId = msg.chat.id;
-  
-  if (!adminId) {
-    adminId = chatId;
-  }
+  if (!adminId) adminId = chatId;
 
   if (chatId !== adminId) {
     return bot.sendMessage(chatId, `⚠️ **دسترسی غیرمجاز!**\nاین ربات انحصاری است و شما دسترسی ادمین ندارید.`, { parse_mode: 'Markdown' });
@@ -65,9 +61,7 @@ bot.on('callback_query', (query) => {
     bot.sendMessage(chatId, `❌ عملیات لغو شد.`);
     sendAdminMenu(chatId);
     bot.answerCallbackQuery(query.id);
-  } 
-  // انتخاب نوع قرعه‌کشی از طریق کلیک روی دکمه شیشه‌ای (جلوگیری از گیر کردن در مرحله ۵)
-  else if (data === 'type_free') {
+  } else if (data === 'type_free') {
     if (userId !== adminId || !adminStates[chatId]) return;
     adminStates[chatId].data.type = 'FREE';
     adminStates[chatId].step = 'TIME';
@@ -86,20 +80,19 @@ bot.on('callback_query', (query) => {
     });
     bot.answerCallbackQuery(query.id);
   } else if (data.startsWith('info_')) {
-    const giveawayId = data.split('_')[1];
+    const giveawayId = data.replace('info_', '');
     const gw = giveaways[giveawayId];
     if (gw) {
-      bot.answerCallbackQuery(query.id, { 
-        text: `👥 شرکت‌کنندگان: ${gw.participants.length} نفر\n🎫 تیکت‌ها: ${gw.ticketsBought} از ${gw.maxTickets || 'نامحدود'}`, 
-        show_alert: true 
-      });
+      const infoText = gw.type === 'TICKET' 
+        ? `🎫 تیکت‌های فروخته شده: ${gw.ticketsBought} از ${gw.maxTickets}` 
+        : `👥 تعداد شرکت‌کنندگان: ${gw.participants.length} نفر`;
+      bot.answerCallbackQuery(query.id, { text: infoText, show_alert: true });
     } else {
-      bot.answerCallbackQuery(query.id, { text: 'اطلاعاتی یافت نشد.', show_alert: true });
+      bot.answerCallbackQuery(query.id, { text: 'اطلاعاتی یافت نشد یا قرعه‌کشی به پایان رسیده است.', show_alert: true });
     }
   }
 });
 
-// دریافت عکس بنر توسط ادمین (مرحله ۱)
 bot.on('photo', async (msg) => {
   const chatId = msg.chat.id;
   if (chatId !== adminId || !adminStates[chatId]) return;
@@ -117,7 +110,6 @@ bot.on('photo', async (msg) => {
   }
 });
 
-// مدیریت دقیق تمام مراحل متنی ادمین
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
@@ -151,7 +143,7 @@ bot.on('message', async (msg) => {
         if (!isNaN(winnersCount) && winnersCount > 0) {
           state.data.winnersCount = winnersCount;
           state.step = 'TYPE';
-          bot.sendMessage(chatId, `✅ تعداد برندگان (${winnersCount} نفر) ثبت شد.\n\n⚙️ **مرحله ۵ از ۶:**\nنوع قرعه‌کشی را انتخاب کنید (روی یکی از دکمه‌های زیر کلیک کنید):`, {
+          bot.sendMessage(chatId, `✅ تعداد برندگان (${winnersCount} نفر) ثبت شد.\n\n⚙️ **مرحله ۵ از ۶:**\nنوع قرعه‌کشی را انتخاب کنید:`, {
             parse_mode: 'Markdown',
             reply_markup: {
               inline_keyboard: [
@@ -165,27 +157,6 @@ bot.on('message', async (msg) => {
           });
         } else {
           bot.sendMessage(chatId, `⚠️ لطفاً یک عدد معتبر برای تعداد برندگان وارد کنید.`);
-        }
-        break;
-
-      case 'TYPE':
-        // برای پشتیبانی از حالت تایپ دستی هم این بخش حفظ شده است
-        if (cleanText === '1' || cleanText.includes('رایگان')) {
-          state.data.type = 'FREE';
-          state.step = 'TIME';
-          bot.sendMessage(chatId, `⏰ مدت زمان قرعه‌کشی به **دقیقه** را وارد کنید (مثلاً: 60):`, {
-            parse_mode: 'Markdown',
-            reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
-          });
-        } else if (cleanText === '2' || cleanText.includes('تیکت')) {
-          state.data.type = 'TICKET';
-          state.step = 'TICKET_DETAILS';
-          bot.sendMessage(chatId, `🎫 قیمت هر تیکت و تعداد کل تیکت‌ها را با فاصله بفرستید:\nمثال: \`5 3\` (یعنی ۵ استارز و ۳ تیکت کل)`, {
-            parse_mode: 'Markdown',
-            reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
-          });
-        } else {
-          bot.sendMessage(chatId, `⚠️ لطفاً روی یکی از دکمه‌های بالا کلیک کنید یا عدد 1 یا 2 را بفرستید.`);
         }
         break;
 
@@ -205,70 +176,71 @@ bot.on('message', async (msg) => {
         break;
 
       case 'TIME':
-        const minutes = parseInt
-            case 'TIME':
-      const minutes = parseInt(cleanText);
-      if (!isNaN(minutes)) {
-        state.data.durationMinutes = minutes;
-        state.step = 'CHANNELS';
-        bot.sendMessage(chatId, `✅ زمان ثبت شد.\n\n📢 **مرحله ۶ (آخر):**\nآیدی یا لینک کانال‌ها را بفرستید (**هر کانال در یک خط جداگانه**):`, {
-          parse_mode: 'Markdown',
-          reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
-        });
-      } else {
-        bot.sendMessage(chatId, `⚠️ لطفاً یک عدد معتبر به دقیقه وارد کنید.`);
-      }
-      break;
-
-    case 'CHANNELS':
-      const channels = cleanText.split('\n').map(c => c.trim()).filter(c => c.length > 0);
-      state.data.channels = channels;
-
-      const giveawayId = 'gw_' + Date.now();
-      giveaways[giveawayId] = state.data;
-      delete adminStates[chatId];
-
-      const botInfo = await bot.getMe();
-      let successCount = 0;
-
-      for (const ch of channels) {
-        try {
-          const captionText = `🎁 **قرعه‌کشی بزرگ: ${state.data.prize}**\n\n📝 ${state.data.description || 'بدون توضیحات'}\n\n👥 تعداد شرکت‌کنندگان: 0\n🎫 تیکت‌ها: 0 از ${state.data.maxTickets || 0}`;
-          
-          const sentMsg = await bot.sendPhoto(ch, state.data.bannerPhotoId, {
-            caption: captionText,
+        const minutes = parseInt(cleanText);
+        if (!isNaN(minutes)) {
+          state.data.durationMinutes = minutes;
+          state.step = 'CHANNELS';
+          bot.sendMessage(chatId, `✅ زمان ثبت شد.\n\n📢 **مرحله ۶ (آخر):**\nآیدی یا لینک کانال‌ها را بفرستید (**هر کانال در یک خط جداگانه**):`, {
             parse_mode: 'Markdown',
-            reply_markup: {
-              inline_keyboard: [
-                [{ text: '🚀 ورود به ربات و شرکت', url: `https://t.me/${botInfo.username}?start=${giveawayId}` }],
-                [{ text: `🎫 تیکت‌ها: 0 از ${state.data.maxTickets || 0}`, callback_data: `info_${giveawayId}` }]
-              ]
-            }
+            reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
           });
-          state.data.bannerMessageId = sentMsg.message_id;
-          successCount++;
-        } catch (e) {
-          bot.sendMessage(chatId, `❌ خطا در ارسال به کانال ${ch}: ${e.message}`);
+        } else {
+          bot.sendMessage(chatId, `⚠️ لطفاً یک عدد معتبر به دقیقه وارد کنید.`);
         }
-      }
+        break;
 
-      bot.sendMessage(chatId, `🎉 قرعه‌کشی با موفقیت در ${successCount} کانال منتشر شد!`);
+      case 'CHANNELS':
+        const channels = cleanText.split('\n').map(c => c.trim()).filter(c => c.length > 0);
+        state.data.channels = channels;
 
-      if (state.data.type === 'FREE' && state.data.durationMinutes) {
-        setTimeout(async () => {
-          await finishGiveaway(giveawayId);
-        }, state.data.durationMinutes * 60 * 1000);
-      }
-      break;
+        const giveawayId = 'gw_' + Math.random().toString(36).substring(2, 9);
+        giveaways[giveawayId] = state.data;
+        delete adminStates[chatId];
+
+        const botInfo = await bot.getMe();
+        let successCount = 0;
+
+        for (const ch of channels) {
+          try {
+            const secondButtonText = state.data.type === 'TICKET' 
+              ? `🎫 تیکت‌ها: 0 از ${state.data.maxTickets}` 
+              : `👥 شرکت‌کنندگان: 0 نفر`;
+
+            const sentMsg = await bot.sendPhoto(ch, state.data.bannerPhotoId, {
+              caption: `🎁 **قرعه‌کشی بزرگ: ${state.data.prize}**\n\n📝 ${state.data.description || 'بدون توضیحات'}\n\n👥 تعداد شرکت‌کنندگان: 0\n${state.data.type === 'TICKET' ? `🎫 تیکت‌ها: 0 از ${state.data.maxTickets}` : ''}`,
+              parse_mode: 'Markdown',
+              reply_markup: {
+                inline_keyboard: [
+                  [{ text: '🚀 ورود به ربات و شرکت', url: `https://t.me/${botInfo.username}?start=${giveawayId}` }],
+                  [{ text: secondButtonText, callback_data: `info_${giveawayId}` }]
+                ]
+              }
+            });
+            state.data.bannerMessageId = sentMsg.message_id;
+            successCount++;
+          } catch (e) {
+            bot.sendMessage(chatId, `❌ خطا در ارسال به کانال ${ch}: ${e.message}`);
+          }
+        }
+
+        bot.sendMessage(chatId, `🎉 قرعه‌کشی با موفقیت در ${successCount} کانال منتشر شد! (شناسه: ${giveawayId})`);
+
+        if (state.data.type === 'FREE' && state.data.durationMinutes) {
+          setTimeout(async () => {
+            await finishGiveaway(giveawayId);
+          }, state.data.durationMinutes * 60 * 1000);
+        }
+        break;
+    }
   }
 });
 
-// مدیریت دستور استارت کاربران برای شرکت یا خرید تیکت
+// ورود کاربران به ربات برای شرکت یا خرید تیکت از طریق دکمه شیشه‌ای
 bot.onText(/\/start (.+)/, async (msg, match) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
-  const firstName = msg.from.first_name;
-  const giveawayId = match[1].split('_')[0];
+  const firstName = msg.from.first_name || 'کاربر';
+  const giveawayId = match[1].trim();
 
   const gw = giveaways[giveawayId];
   if (!gw || gw.finished) {
@@ -299,7 +271,6 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
   }
 });
 
-// پیام خوش‌آمدگویی برای کاربران عادی
 bot.onText(/\/start$/, (msg) => {
   const chatId = msg.chat.id;
   if (chatId === adminId) return;
@@ -313,9 +284,9 @@ bot.on('successful_payment', (msg) => {
   const chatId = msg.chat.id;
   const payload = msg.successful_payment.invoice_payload; 
   const parts = payload.split('_');
-  const giveawayId = parts[1] + '_' + parts[2];
-  const userId = parseInt(parts[3]);
-  const firstName = msg.from.first_name;
+  const giveawayId = parts[1];
+  const userId = parseInt(parts[2]);
+  const firstName = msg.from.first_name || 'کاربر';
 
   const gw = giveaways[giveawayId];
   if (gw && !gw.finished) {
@@ -338,7 +309,10 @@ async function updateAllBanners(giveawayId) {
   if (!gw || !gw.channels) return;
   const botInfo = await bot.getMe();
 
-  const newCaption = `🎁 **قرعه‌کشی بزرگ: ${gw.prize}**\n\n📝 ${gw.description || 'بدون توضیحات'}\n\n👥 تعداد شرکت‌کنندگان: ${gw.participants.length}\n🎫 تیکت‌ها: ${gw.ticketsBought} از ${gw.maxTickets || 0}`;
+  const newCaption = `🎁 **قرعه‌کشی بزرگ: ${gw.prize}**\n\n📝 ${gw.description || 'بدون توضیحات'}\n\n👥 تعداد شرکت‌کنندگان: ${gw.participants.length}\n${gw.type === 'TICKET' ? `🎫 تیکت‌ها: ${gw.ticketsBought} از ${gw.maxTickets}` : ''}`;
+  const secondButtonText = gw.type === 'TICKET' 
+    ? `🎫 تیکت‌ها: ${gw.ticketsBought} از ${gw.maxTickets}` 
+    : `👥 شرکت‌کنندگان: ${gw.participants.length} نفر`;
 
   for (const ch of gw.channels) {
     try {
@@ -349,7 +323,7 @@ async function updateAllBanners(giveawayId) {
         reply_markup: {
           inline_keyboard: [
             [{ text: '🚀 ورود به ربات و شرکت', url: `https://t.me/${botInfo.username}?start=${giveawayId}` }],
-            [{ text: `🎫 تیکت‌ها: ${gw.ticketsBought} از ${gw.maxTickets || 0}`, callback_data: `info_${giveawayId}` }]
+            [{ text: secondButtonText, callback_data: `info_${giveawayId}` }]
           ]
         }
       });
@@ -382,3 +356,4 @@ async function finishGiveaway(giveawayId) {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => { console.log(`Bot running on port ${PORT}`); });
+      
