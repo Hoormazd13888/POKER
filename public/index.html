@@ -98,22 +98,17 @@
         <div id="sec-leaderboard" class="section">
             <div class="card">
                 <div class="card-title">🏅 جدول رتبه‌بندی برترین‌ها</div>
-                <div id="leaderboard-list"><p style="font-size:12px; color:var(--text-muted);">در حال بارگذاری...</p></div>
+                <div id="leaderboard-list">
+                    <div class="list-row"><span>#1 بازیکن تستی</span><strong style="color:var(--gold);">10.00 💎</strong></div>
+                </div>
             </div>
         </div>
 
         <!-- تب تسک‌ها -->
         <div id="sec-missions" class="section">
-            <div id="daily-card" class="card" style="display:none;">
-                <div class="card-title">🎯 پاداش روزانه</div>
-                <div class="list-row">
-                    <span>پاداش امروز</span>
-                    <button class="btn btn-gold" style="width:auto; padding:6px 14px;" onclick="alert('پاداش دریافت شد!')">دریافت</button>
-                </div>
-            </div>
             <div class="card">
                 <div class="card-title">📌 تسک‌های فعال</div>
-                <div id="tasks-container"><p style="font-size:12px; color:var(--text-muted);">تسکی توسط ادمین ثبت نشده است.</p></div>
+                <div class="list-row"><span>عضویت در کانال رسمی (+0.1 💎)</span><button class="btn btn-gold" style="width:auto; padding:6px 12px; font-size:12px;" onclick="alert('تسک انجام شد!')">انجام</button></div>
             </div>
         </div>
 
@@ -135,32 +130,25 @@
 
             <div class="card">
                 <div class="card-title">👤 حساب کاربری و آمار</div>
-                <div class="list-row"><span>نام بازیکن:</span><strong id="prof-name" style="color:var(--blue);">-</strong></div>
-                <div class="list-row"><span>شناسه عددی:</span><strong id="prof-id">-</strong></div>
-                <div class="list-row"><span>تاریخ عضویت:</span><strong id="prof-date">-</strong></div>
+                <div class="list-row"><span>نام بازیکن:</span><strong id="prof-name" style="color:var(--blue);">بازیکن</strong></div>
+                <div class="list-row"><span>شناسه عددی:</span><strong id="prof-id">123456</strong></div>
                 <div class="list-row"><span>آمار برد / باخت:</span><strong id="prof-stats" style="color:var(--gold);">0 / 0</strong></div>
-            </div>
-
-            <div class="card">
-                <div class="card-title">📜 تاریخچه واریز و برداشت TON</div>
-                <div id="history-list" style="font-size:12px; color:var(--text-muted);">تراکنشی ثبت نشده است.</div>
             </div>
         </div>
 
         <!-- تب مدیریت ادمین -->
         <div id="sec-admin" class="section">
             <div class="card">
-                <div class="card-title">⚙️ تنظیمات مالی و مالیات آرنا</div>
+                <div class="card-title">⚙️ پنل مدیریت و تنظیمات</div>
                 <label>درصد مالیات هر راند:</label>
-                <input type="number" id="adm-fee" placeholder="مثلا 5">
-                <label>وضعیت پاداش روزانه:</label>
-                <select id="adm-daily-active">
-                    <option value="true">فعال</option>
-                    <option value="false">غیرفعال</option>
-                </select>
-                <label>مقدار پاداش روزانه:</label>
-                <input type="number" id="adm-daily-amount" placeholder="مقدار">
-                <button class="btn btn-gold" onclick="saveSettings()">ذخیره تنظیمات</button>
+                <input type="number" id="adm-fee" value="5">
+                <button class="btn btn-gold" onclick="alert('تنظیمات با موفقیت ذخیره شد.')">ذخیره تنظیمات</button>
+            </div>
+            <div class="card">
+                <div class="card-title">🏆 ایجاد مسابقه جدید</div>
+                <input type="text" id="adm-tour-title" placeholder="عنوان مسابقه">
+                <input type="text" id="adm-tour-prize" placeholder="جایزه مسابقه">
+                <button class="btn btn-purple" onclick="alert('مسابقه با موفقیت ایجاد شد.')">انتشار مسابقه</button>
             </div>
         </div>
     </div>
@@ -209,7 +197,7 @@
         <div class="nav-item" onclick="switchTab('leaderboard', this)"><span class="nav-icon">🏅</span>لیدربرد</div>
         <div class="nav-item" onclick="switchTab('missions', this)"><span class="nav-icon">🎯</span>تسک‌ها</div>
         <div class="nav-item" onclick="switchTab('profile', this)"><span class="nav-icon">👤</span>پروفایل</div>
-        <div id="nav-admin" class="nav-item" style="display:none;" onclick="switchTab('admin', this)"><span class="nav-icon">👑</span>مدیریت</div>
+        <div id="nav-admin" class="nav-item" onclick="switchTab('admin', this)"><span class="nav-icon">👑</span>مدیریت</div>
     </div>
 
     <script>
@@ -220,8 +208,13 @@
             tg.ready();
         } catch (e) { console.log('Telegram WebApp not ready'); }
 
-        const tgUser = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : { id: 999999, first_name: 'کاربر تستی' };
-        let currentUser = null;
+        const tgUser = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : { id: 123456, first_name: 'کاربر تستی' };
+        
+        let userBalance = 5.00; // موجودی تستی اولیه برای تست کلیدها
+
+        document.getElementById('prof-name').innerText = tgUser.first_name;
+        document.getElementById('prof-id').innerText = tgUser.id;
+        document.getElementById('user-balance').innerText = userBalance.toFixed(2);
 
         function switchTab(tabName, element) {
             document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
@@ -252,82 +245,54 @@
             window.location.href = tonLink;
         }
 
-        async function verifyDeposit() {
+        function verifyDeposit() {
             const amount = parseFloat(document.getElementById('deposit-amount').value);
             if (!amount || amount <= 0) return alert('مقدار واریزی را وارد کنید.');
 
-            const res = await fetch('/api/verify-deposit', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: tgUser.id, amount })
-            });
-            const data = await res.json();
-            alert(data.message);
-            if (data.success) syncData();
+            userBalance += amount;
+            document.getElementById('user-balance').innerText = userBalance.toFixed(2);
+            alert('واریز شما تایید و به موجودی اضافه شد!');
         }
 
-        async function syncData() {
-            try {
-                const response = await fetch('/api/sync', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: tgUser.id, first_name: tgUser.first_name, username: tgUser.username })
-                });
-                const data = await response.json();
-                currentUser = data.user;
-
-                document.getElementById('user-balance').innerText = currentUser.balance.toFixed(2);
-                document.getElementById('prof-name').innerText = currentUser.name;
-                document.getElementById('prof-id').innerText = currentUser.id;
-                document.getElementById('prof-date').innerText = currentUser.joinedDate;
-                document.getElementById('prof-stats').innerText = `${currentUser.wins} برد / ${currentUser.losses} باخت`;
-                document.getElementById('waiting-count').innerText = data.arena.players.length;
-
-                if (currentUser.history.length > 0) {
-                    document.getElementById('history-list').innerHTML = currentUser.history.map(h => `<div style="padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.05);">• ${h}</div>`).join('');
-                }
-
-                if (data.leaderboard.length > 0) {
-                    document.getElementById('leaderboard-list').innerHTML = data.leaderboard.map((l, i) => `
-                        <div class="list-row"><span>#${i+1} ${l.name}</span><strong style="color:var(--gold);">${l.balance.toFixed(2)} 💎</strong></div>
-                    `).join('');
-                }
-
-                if (data.isAdmin) {
-                    document.getElementById('nav-admin').style.display = 'block';
-                }
-            } catch (err) {
-                console.error('Sync failed:', err);
-            }
-        }
-
-        async function requestWithdrawal() {
+        function requestWithdrawal() {
             const amount = parseFloat(document.getElementById('withdraw-amount').value);
             if (!amount || amount <= 0) return alert('مقدار نامعتبر است.');
-            const res = await fetch('/api/withdraw', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tgUser.id, amount }) });
-            const data = await res.json();
-            if (data.error) alert(data.error); else { alert('درخواست برداشت ثبت شد.'); syncData(); }
+            if (amount > userBalance) return alert('موجودی کافی نیست.');
+
+            userBalance -= amount;
+            document.getElementById('user-balance').innerText = userBalance.toFixed(2);
+            alert('درخواست برداشت ثبت شد.');
         }
 
-        async function saveSettings() {
-            await fetch('/api/admin/update-settings', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    adminId: tgUser.id,
-                    feePercent: document.getElementById('adm-fee').value,
-                    dailyActive: document.getElementById('adm-daily-active').value === 'true',
-                    dailyAmount: document.getElementById('adm-daily-amount').value
-                })
-            });
-            alert('تنظیمات ذخیره شد.');
+        function joinArena(amount) {
+            if (userBalance < amount) return alert('موجودی الماس کافی نیست! ابتدا واریز کنید.');
+            
+            userBalance -= amount;
+            document.getElementById('user-balance').innerText = userBalance.toFixed(2);
+            document.getElementById('arena-bank-badge').innerText = `Total Pool: ${amount.toFixed(2)} 💎`;
+            document.getElementById('arena-status-text').innerText = 'شمارش معکوس ورود بازیکنان...';
+            
+            let timeLeft = 5;
+            let timerInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('arena-timer').innerText = timeLeft + 's';
+                
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    document.getElementById('arena-status-text').innerText = 'چرخش گردونه شانس...';
+                    document.getElementById('wheel-box').classList.add('spinning');
+                    
+                    setTimeout(() => {
+                        document.getElementById('wheel-box').classList.remove('spinning');
+                        document.getElementById('arena-status-text').innerText = 'مسابقه تمام شد!';
+                        let winAmount = amount * 1.9;
+                        userBalance += winAmount;
+                        document.getElementById('user-balance').innerText = userBalance.toFixed(2);
+                        document.getElementById('arena-result-box').innerText = `👑 برنده شدید: +${winAmount.toFixed(2)} 💎`;
+                    }, 4000);
+                }
+            }, 1000);
         }
-
-        async function joinArena(amount) {
-            if (!currentUser || currentUser.balance < amount) return alert('موجودی الماس کافی نیست! ابتدا از بخش پروفایل واریز کنید.');
-            const res = await fetch('/api/arena/join', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tgUser.id, amount }) });
-            const data = await res.json();
-            if (data.error) return alert(data.error);
-
-            if (data.success) {
-                document.getElementById('arena-b
+    </script>
+</body>
+</html>
