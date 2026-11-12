@@ -23,23 +23,14 @@
     .card-title { font-size: 20px; font-weight: bold; margin-bottom: 4px; }
     .card-desc { font-size: 13px; color: #94a3b8; }
 
-    /* استایل‌های مشترک بازی‌ها (شبیه تصویر ارسالی شما) */
     .game-header { width: 100%; display: flex; justify-content: space-between; align-items: center; background: #171d2c; padding: 12px 16px; border-radius: 14px; margin-bottom: 14px; border: 1px solid #232d42; }
     .pot-box { font-size: 16px; font-weight: bold; color: #00E5FF; }
     .timer-box { background: #222b3d; padding: 6px 12px; border-radius: 10px; font-weight: bold; color: #FFD600; font-size: 13px; }
 
-    .rooms-selector { display: flex; gap: 8px; margin-bottom: 12px; width: 100%; }
-    .room-btn { flex: 1; background: #171d2c; border: 1px solid #232d42; color: #94a3b8; padding: 8px; border-radius: 10px; font-weight: bold; cursor: pointer; }
-    .room-btn.active { background: #2979FF; color: #fff; border-color: #2979FF; }
-
-    /* باکس مربعی آرنا */
-    .arena-box { width: 100%; height: 260px; background: linear-gradient(135deg, #ff2e93, #2979FF); border-radius: 20px; position: relative; display: flex; justify-content: center; align-items: center; overflow: hidden; margin-bottom: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-    .arena-inner-circle { width: 90px; height: 90px; background: rgba(15, 22, 36, 0.85); border-radius: 50%; display: flex; flex-direction: column; justify-content: center; align-items: center; font-weight: bold; border: 3px solid rgba(255,255,255,0.3); z-index: 5; }
-
-    /* دایره رولت */
     .wheel-container { position: relative; width: 260px; height: 260px; margin: 10px 0 20px; display: flex; justify-content: center; align-items: center; }
     .pointer { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-top: 22px solid #fff; z-index: 10; }
     canvas { border-radius: 50%; box-shadow: 0 0 25px rgba(0, 229, 255, 0.2); transition: transform 4.8s cubic-bezier(0.15, 0.85, 0.25, 1); }
+    .center-badge { position: absolute; width: 72px; height: 72px; background: #171d2c; border-radius: 50%; display: flex; flex-direction: column; justify-content: center; align-items: center; border: 3px solid #28334d; font-weight: bold; font-size: 13px; z-index: 5; }
 
     .controls { width: 100%; background: #171d2c; padding: 14px; border-radius: 16px; border: 1px solid #232d42; margin-bottom: 14px; }
     .bet-presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px; }
@@ -50,6 +41,8 @@
     
     .players-list { width: 100%; display: flex; flex-direction: column; gap: 6px; }
     .player-card { background: #171d2c; padding: 8px 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; border-right: 4px solid #fff; font-size: 14px; }
+    .player-info { display: flex; align-items: center; gap: 10px; }
+    .player-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; background: #333; }
 
     .wallet-box { background: #171d2c; width: 100%; padding: 20px; border-radius: 16px; text-align: center; border: 1px solid #232d42; margin-bottom: 16px; }
     .wallet-btns { display: flex; gap: 10px; margin-top: 14px; }
@@ -72,14 +65,13 @@
     <div class="balance-badge" id="userBalance">0.00 TON</div>
   </div>
 
-  <!-- تب خانه -->
   <div id="homeView" class="view active">
     <div class="home-banner">🔥 تورنمنت بزرگ آرنا و رولت</div>
     <div class="game-cards-grid">
       <div class="game-card card-arena" onclick="switchTab('arenaView')">
         <div>
           <div class="card-title">⚔️ آرنا (Arena)</div>
-          <div class="card-desc">نبرد مربعی PvP (حداقل ۲ بازیکن)</div>
+          <div class="card-desc">نبرد چندنفره با تصویر و نام اکانت</div>
         </div>
         <div style="font-size: 28px;">➡️</div>
       </div>
@@ -93,20 +85,17 @@
     </div>
   </div>
 
-  <!-- تب آرنا (مربعی) -->
+  <!-- تب آرنا -->
   <div id="arenaView" class="view">
-    <div class="rooms-selector">
-      <button class="room-btn active">اتاق ۱</button>
-      <button class="room-btn">اتاق ۲</button>
-    </div>
-
     <div class="game-header">
       <div>مجموع: <span class="pot-box" id="arenaPot">0 TON</span></div>
       <div class="timer-box" id="arenaTimer">منتظر نفر دوم...</div>
     </div>
 
-    <div class="arena-box" id="arenaBox">
-      <div class="arena-inner-circle" id="arenaCenterStatus">آماده</div>
+    <div class="wheel-container">
+      <div class="pointer"></div>
+      <canvas id="arenaCanvas" width="260" height="260"></canvas>
+      <div class="center-badge" id="arenaCenterStatus">آماده</div>
     </div>
 
     <div class="controls">
@@ -125,7 +114,7 @@
     <div class="players-list" id="arenaPlayersList"></div>
   </div>
 
-  <!-- تب رولت (دایره‌ای) -->
+  <!-- تب رولت -->
   <div id="rouletteView" class="view">
     <div class="game-header">
       <div>مجموع: <span class="pot-box" id="potAmount">0 TON</span></div>
@@ -135,7 +124,7 @@
     <div class="wheel-container">
       <div class="pointer"></div>
       <canvas id="wheelCanvas" width="260" height="260"></canvas>
-      <div class="arena-inner-circle" style="position: absolute;" id="centerStatus">آماده</div>
+      <div class="center-badge" id="centerStatus">آماده</div>
     </div>
 
     <div class="controls">
@@ -181,7 +170,6 @@
     <p id="winnerText" style="font-size:16px; font-weight:bold;"></p>
   </div>
 
-  <!-- نوار ناوبری پایین -->
   <div class="nav-bar">
     <div class="nav-item active" onclick="switchTab('homeView', this)"><span>🏠</span>خانه</div>
     <div class="nav-item" onclick="switchTab('arenaView', this)"><span>⚔️</span>آرنا</div>
@@ -197,7 +185,8 @@
 
     const user = tg?.initDataUnsafe?.user || {
       id: 'user_' + Math.floor(Math.random() * 10000),
-      first_name: 'کاربر_تست'
+      first_name: 'کاربر_' + Math.floor(Math.random() * 99),
+      photo_url: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f464.png'
     };
 
     socket.emit('getWallet', user.id);
@@ -218,11 +207,9 @@
       }
     }
 
-    // --- رولت ---
-    const canvas = document.getElementById('wheelCanvas');
-    const ctx = canvas.getContext('2d');
-
-    function drawWheel(players) {
+    function drawWheel(canvasId, players) {
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, 260, 260);
       if (!players || players.length === 0) {
         ctx.beginPath(); ctx.arc(130, 130, 125, 0, Math.PI * 2);
@@ -237,6 +224,7 @@
       });
     }
 
+    // رولت
     socket.on('rouletteState', (state) => {
       document.getElementById('potAmount').innerText = `${state.pot} TON`;
       if (state.players.length < 2) {
@@ -246,7 +234,7 @@
         document.getElementById('timerDisplay').innerText = `شروع در ${state.timer}s`;
         document.getElementById('centerStatus').innerText = `${state.timer}s`;
       }
-      if (state.status !== 'SPINNING') drawWheel(state.players);
+      if (state.status !== 'SPINNING') drawWheel('wheelCanvas', state.players);
 
       const list = document.getElementById('playersList');
       list.innerHTML = '';
@@ -254,23 +242,17 @@
         const div = document.createElement('div');
         div.className = 'player-card';
         div.style.borderRightColor = p.color;
-        div.innerHTML = `<div><strong>${p.name}</strong> <span style="font-size:12px; color:#94a3b8;">(${p.bet} TON)</span></div><div style="font-weight:bold; color:${p.color};">${p.percentage.toFixed(1)}%</div>`;
+        div.innerHTML = `
+          <div class="player-info">
+            <img src="${p.photo || 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f464.png'}" class="player-avatar" />
+            <strong>${p.name}</strong> <span style="font-size:12px; color:#94a3b8;">(${p.bet} TON)</span>
+          </div>
+          <div style="font-weight:bold; color:${p.color};">${p.percentage.toFixed(1)}%</div>`;
         list.appendChild(div);
       });
     });
 
-    socket.on('spinStart', ({ winningAngle, winner, pot }) => {
-      document.getElementById('timerDisplay').innerText = 'چرخش...';
-      const finalAngle = (360 * 6) + (360 - winningAngle);
-      canvas.style.transition = 'transform 4.8s cubic-bezier(0.15, 0.85, 0.25, 1)';
-      canvas.style.transform = `rotate(${finalAngle}deg)`;
-      setTimeout(() => {
-        document.getElementById('winnerText').innerText = `${winner.name} برنده ${pot} TON شد!`;
-        document.getElementById('winnerBanner').style.display = 'block';
-      }, 4900);
-    });
-
-    // --- آرنا ---
+    // آرنا
     socket.on('arenaState', (state) => {
       document.getElementById('arenaPot').innerText = `${state.pot} TON`;
       if (state.players.length < 2) {
@@ -280,6 +262,7 @@
         document.getElementById('arenaTimer').innerText = `شروع در ${state.timer}s`;
         document.getElementById('arenaCenterStatus').innerText = `${state.timer}s`;
       }
+      if (state.status !== 'SPINNING') drawWheel('arenaCanvas', state.players);
 
       const list = document.getElementById('arenaPlayersList');
       list.innerHTML = '';
@@ -287,23 +270,40 @@
         const div = document.createElement('div');
         div.className = 'player-card';
         div.style.borderRightColor = p.color;
-        div.innerHTML = `<div><strong>${p.name}</strong></div><div style="font-weight:bold; color:${p.color};">${p.bet} TON</div>`;
+        div.innerHTML = `
+          <div class="player-info">
+            <img src="${p.photo || 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f464.png'}" class="player-avatar" />
+            <strong>${p.name}</strong> <span style="font-size:12px; color:#94a3b8;">(${p.bet} TON)</span>
+          </div>
+          <div style="font-weight:bold; color:${p.color};">${p.percentage.toFixed(1)}%</div>`;
         list.appendChild(div);
       });
     });
 
-    socket.on('arenaFinish', ({ winner, pot }) => {
-      document.getElementById('arenaTimer').innerText = 'پایان راند!';
+    socket.on('spinStart', ({ type, winningAngle, winner, pot }) => {
+      const canvasId = type === 'roulette' ? 'wheelCanvas' : 'arenaCanvas';
+      const timerId = type === 'roulette' ? 'timerDisplay' : 'arenaTimer';
+      document.getElementById(timerId).innerText = 'چرخش...';
+
+      const canvas = document.getElementById(canvasId);
+      const finalAngle = (360 * 6) + (360 - winningAngle);
+      canvas.style.transition = 'transform 4.8s cubic-bezier(0.15, 0.85, 0.25, 1)';
+      canvas.style.transform = `rotate(${finalAngle}deg)`;
+
       setTimeout(() => {
-        document.getElementById('winnerText').innerText = `[آرنا] ${winner.name} برنده ${pot} TON شد!`;
+        document.getElementById('winnerText').innerText = `${winner.name} برنده ${pot} TON شد!`;
         document.getElementById('winnerBanner').style.display = 'block';
-      }, 2000);
+      }, 4900);
     });
 
-    function sendBet(amount) { socket.emit('placeRouletteBet', { userId: String(user.id), username: user.first_name, amount }); }
+    function sendBet(amount) { 
+      socket.emit('placeRouletteBet', { userId: String(user.id), username: user.first_name, photoUrl: user.photo_url || '', amount }); 
+    }
     function sendCustomBet() { const val = parseFloat(document.getElementById('betInput').value); if(val>0){sendBet(val); document.getElementById('betInput').value='';} }
 
-    function sendArenaBet(amount) { socket.emit('placeArenaBet', { userId: String(user.id), username: user.first_name, amount }); }
+    function sendArenaBet(amount) { 
+      socket.emit('placeArenaBet', { userId: String(user.id), username: user.first_name, photoUrl: user.photo_url || '', amount }); 
+    }
     function sendCustomArenaBet() { const val = parseFloat(document.getElementById('arenaInput').value); if(val>0){sendArenaBet(val); document.getElementById('arenaInput').value='';} }
 
     function walletAction(type, amount) { socket.emit('walletAction', { userId: String(user.id), type, amount }); }
