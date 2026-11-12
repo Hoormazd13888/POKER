@@ -22,15 +22,15 @@ const usersBalances = {};
 let rouletteState = { status: 'WAITING', timer: 15, pot: 0, players: [], winner: null, winningAngle: 0 };
 let rouletteInterval = null;
 
-// وضعیت بازی آرنا (مربعی)
-let arenaState = { status: 'WAITING', timer: 15, pot: 0, players: [], winner: null, selectedRoom: 1 };
+// وضعیت بازی آرنا
+let arenaState = { status: 'WAITING', timer: 15, pot: 0, players: [], winner: null, winningAngle: 0 };
 let arenaInterval = null;
 
+// دستور /start در تلگرام با لینک سایت شما
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
   const firstName = msg.from.first_name || 'کاربر';
-  // آدرس سرور خودت روی Render یا Railway رو اینجا بگذار
-  const webAppUrl = process.env.WEB_APP_URL || 'https://poker-xqj6.onrender.com';
+  const webAppUrl = 'https://poker-xqj6.onrender.com/';[span_3](start_span)[span_3](end_span)
 
   bot.sendMessage(chatId, `سلام ${firstName} عزیز! 🎮\nبه ربات آرنا و رولت TON خوش آمدید:`, {
     reply_markup: {
@@ -39,7 +39,7 @@ bot.onText(/\/start/, (msg) => {
   });
 });
 
-// --- منطق رولت ---
+// --- رولت ---
 function recalculateRouletteAngles() {
   let currentAngle = 0;
   rouletteState.players.forEach(p => {
@@ -57,13 +57,11 @@ function startRouletteCountdown() {
   rouletteState.timer = 15;
 
   rouletteInterval = setInterval(() => {
-    // بررسی اینکه حتماً حداقل ۲ بازیکن حضور داشته باشند
     if (rouletteState.players.length < 2) {
-      rouletteState.timer = 15; // منتظر ماندن تایمر تا ورود نفر دوم
+      rouletteState.timer = 15;
       io.emit('rouletteState', rouletteState);
       return;
     }
-
     rouletteState.timer -= 1;
     io.emit('rouletteState', rouletteState);
 
@@ -87,7 +85,7 @@ function spinRouletteWheel() {
   if (!usersBalances[winner.id]) usersBalances[winner.id] = 0;
   usersBalances[winner.id] += rouletteState.pot;
 
-  io.emit('spinStart', { winningAngle: targetAngle, winner, pot: rouletteState.pot });
+  io.emit('spinStart', { type: 'roulette', winningAngle: targetAngle, winner, pot: rouletteState.pot });
 
   setTimeout(() => {
     rouletteState.status = 'RESULT';
@@ -102,54 +100,63 @@ function resetRoulette() {
 }
 
 
-// --- منطق آرنا (مربعی) ---
+// --- آرنا (با محاسبه دقیق سهم و رنگ هر کاربر مثل رولت) ---
+function recalculateArenaAngles() {
+  let currentAngle = 0;
+  arenaState.players.forEach(p => {
+    p.percentage = (p.bet / arenaState.pot) * 100;
+    const sliceAngle = (p.bet / arenaState.pot) * 360;
+    p.startAngle = currentAngle;
+    p.endAngle = currentAngle + sliceAngle;
+    currentAngle += sliceAngle;
+  });
+}
+
 function startArenaCountdown() {
   if (arenaInterval) return;
   arenaState.status = 'COUNTDOWN';
   arenaState.timer = 15;
 
   arenaInterval = setInterval(() => {
-    // شرط حیاتی: تا بازیکن دوم نیامده تایمر شروع نشود یا معلق بماند
     if (arenaState.players.length < 2) {
       arenaState.timer = 15;
       io.emit('arenaState', arenaState);
       return;
     }
-
     arenaState.timer -= 1;
     io.emit('arenaState', arenaState);
 
     if (arenaState.timer <= 0) {
       clearInterval(arenaInterval);
       arenaInterval = null;
-      finishArenaGame();
+      spinArenaWheel();
     }
   }, 1000);
 }
 
-function finishArenaGame() {
+function spinArenaWheel() {
   if (arenaState.players.length < 2) { resetArena(); return; }
   arenaState.status = 'SPINNING';
+  const targetAngle = (crypto.randomInt(0, 1000000) / 1000000) * 360;
+  arenaState.winningAngle = targetAngle;
 
-  // انتخاب تصادفی برنده در آرنا مربعی
-  const winnerIndex = crypto.randomInt(0, arenaState.players.length);
-  const winner = arenaState.players[winnerIndex];
+  const winner = arenaState.players.find(p => targetAngle >= p.startAngle && targetAngle < p.endAngle) || arenaState.players[arenaState.players.length - 1];
   arenaState.winner = winner;
 
   if (!usersBalances[winner.id]) usersBalances[winner.id] = 0;
   usersBalances[winner.id] += arenaState.pot;
 
-  io.emit('arenaFinish', { winner, pot: arenaState.pot });
+  io.emit('spinStart', { type: 'arena', winningAngle: targetAngle, winner, pot: arenaState.pot });
 
   setTimeout(() => {
     arenaState.status = 'RESULT';
     io.emit('arenaState', arenaState);
     setTimeout(() => { resetArena(); }, 4000);
-  }, 4000);
+  }, 5000);
 }
 
 function resetArena() {
-  arenaState = { status: 'WAITING', timer: 15, pot: 0, players: [], winner: null, selectedRoom: arenaState.selectedRoom };
+  arenaState = { status: 'WAITING', timer: 15, pot: 0, players: [], winner: null, winningAngle: 0 };
   io.emit('arenaState', arenaState);
 }
 
@@ -158,10 +165,9 @@ io.on('connection', (socket) => {
   socket.emit('rouletteState', rouletteState);
   socket.emit('arenaState', arenaState);
 
-  // ثبت شرط رولت
-  socket.on('placeRouletteBet', ({ userId, username, amount }) => {
+  socket.on('placeRouletteBet', ({ userId, username, photoUrl, amount }) => {
     const bet = parseFloat(amount);
-    if (!usersBalances[userId]) usersBalances[userId] = 10.0; // تست اولیه
+    if (!usersBalances[userId]) usersBalances[userId] = 10.0;
     if (usersBalances[userId] < bet) { socket.emit('errorMsg', 'موجودی کافی نیست!'); return; }
 
     usersBalances[userId] -= bet;
@@ -169,7 +175,12 @@ io.on('connection', (socket) => {
 
     let p = rouletteState.players.find(x => x.id === userId);
     if (p) { p.bet = parseFloat((p.bet + bet).toFixed(4)); } 
-    else { rouletteState.players.push({ id: userId, name: username || 'User', bet, color: COLORS[rouletteState.players.length % COLORS.length], percentage: 0, startAngle: 0, endAngle: 0 }); }
+    else { 
+      rouletteState.players.push({ 
+        id: userId, name: username || 'User', photo: photoUrl || '', bet, 
+        color: COLORS[rouletteState.players.length % COLORS.length], percentage: 0, startAngle: 0, endAngle: 0 
+      }); 
+    }
 
     rouletteState.pot = parseFloat((rouletteState.pot + bet).toFixed(4));
     recalculateRouletteAngles();
@@ -180,8 +191,7 @@ io.on('connection', (socket) => {
     io.emit('rouletteState', rouletteState);
   });
 
-  // ثبت شرط آرنا
-  socket.on('placeArenaBet', ({ userId, username, amount }) => {
+  socket.on('placeArenaBet', ({ userId, username, photoUrl, amount }) => {
     const bet = parseFloat(amount);
     if (!usersBalances[userId]) usersBalances[userId] = 10.0;
     if (usersBalances[userId] < bet) { socket.emit('errorMsg', 'موجودی کافی نیست!'); return; }
@@ -190,10 +200,16 @@ io.on('connection', (socket) => {
     socket.emit('balanceUpdate', usersBalances[userId]);
 
     let p = arenaState.players.find(x => x.id === userId);
-    if (p) { p.bet = parseFloat((p.bet + bet).toFixed(4)); }
-    else { arenaState.players.push({ id: userId, name: username || 'User', bet, color: COLORS[arenaState.players.length % COLORS.length] }); }
+    if (p) { p.bet = parseFloat((p.bet + bet).toFixed(4)); } 
+    else { 
+      arenaState.players.push({ 
+        id: userId, name: username || 'User', photo: photoUrl || '', bet, 
+        color: COLORS[arenaState.players.length % COLORS.length], percentage: 0, startAngle: 0, endAngle: 0 
+      }); 
+    }
 
     arenaState.pot = parseFloat((arenaState.pot + bet).toFixed(4));
+    recalculateArenaAngles();
 
     if (arenaState.status === 'WAITING' || arenaState.status === 'COUNTDOWN') {
       startArenaCountdown();
