@@ -34,10 +34,10 @@ bot.on('callback_query', (query) => {
   const chatId = query.message.chat.id;
   if (query.data === 'start_giveaway') {
     adminStates[chatId] = {
-      step: 'BANNER_URL',
+      step: 'BANNER_FILE',
       data: { participants: [], ticketsBought: 0 }
     };
-    bot.sendMessage(chatId, `🎁 **ساخت قرعه‌کشی جدید** (مرحله ۱ از ۵)\n\nلطفاً **لینک عکس بنر** (آدرس اینترنتی تصویر) را ارسال کنید:`, {
+    bot.sendMessage(chatId, `🎁 **ساخت قرعه‌کشی جدید** (مرحله ۱ از ۵)\n\nلطفاً **عکس بنر** قرعه‌کشی را مستقیماً ارسال کنید:`, {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [[{ text: '❌ لغو ساخت', callback_data: 'cancel_gw' }]]
@@ -55,22 +55,28 @@ bot.on('callback_query', (query) => {
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
-  if (!text || text.startsWith('/')) return;
+  const photo = msg.photo;
 
-  if (!adminStates[chatId]) {
-    return; // اگر در حال ساخت نیست، پیام را نادیده بگیر
-  }
-
+  if (!adminStates[chatId]) return;
   const state = adminStates[chatId];
 
-  if (state.step === 'BANNER_URL') {
-    state.data.bannerUrl = text.trim();
-    state.step = 'PRIZE';
-    bot.sendMessage(chatId, `✅ لینک بنر ثبت شد.\n\n🏆 **مرحله ۲ از ۵:**\nعنوان یا نوع جایزه قرعه‌کشی را بنویسید (مثلاً: ۱۰۰ تون‌کوین):`, {
-      parse_mode: 'Markdown',
-      reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
-    });
+  // مرحله ۱: دریافت عکس بنر (فایل عکس یا لینک)
+  if (state.step === 'BANNER_FILE') {
+    if (photo && photo.length > 0) {
+      // ذخیره file_id عکس ارسالی کاربر
+      state.data.bannerPhotoId = photo[photo.length - 1].file_id;
+      state.step = 'PRIZE';
+      askPrize(chatId);
+    } else if (text && !text.startsWith('/')) {
+      // اگر لینک متنی فرستاد
+      state.data.bannerPhotoId = text.trim();
+      state.step = 'PRIZE';
+      askPrize(chatId);
+    } else {
+      bot.sendMessage(chatId, `⚠️ لطفاً حتماً یک **عکس** یا لینک تصویر ارسال کنید.`);
+    }
   }
+  else if (text && text.startsWith('/')) return;
   else if (state.step === 'PRIZE') {
     state.data.prize = text.trim();
     state.step = 'DESC';
@@ -143,7 +149,7 @@ bot.on('message', async (msg) => {
 
     try {
       const botInfo = await bot.getMe();
-      const sentMsg = await bot.sendPhoto(channel, state.data.bannerUrl, {
+      const sentMsg = await bot.sendPhoto(channel, state.data.bannerPhotoId, {
         caption: `🎁 **قرعه‌کشی بزرگ: ${state.data.prize}**\n\n📝 ${state.data.description || 'بدون توضیحات'}\n\n👥 تعداد شرکت‌کنندگان: 0\n${state.data.type === 'TICKET' ? `🎫 تیکت‌ها: 0 از ${state.data.maxTickets}` : ''}`,
         parse_mode: 'Markdown',
         reply_markup: {
@@ -166,6 +172,24 @@ bot.on('message', async (msg) => {
     }
   }
 });
+
+function askPrize(chatId) {
+  bot.sendMessage(chatId, `✅ بنر دریافت شد.\n\n🏆 **مرحله ۲ از ۵:**\nعنوان یا نوع جایزه قرعه‌کشی را بنویسید (مثلاً: ۱۰۰ تون‌کوین):`, {
+    parse_mode: 'Markdown',
+    reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
+  });
+}
+
+async function finishGiveaway(giveawayId) {
+  const gw = giveaways[giveawayId];
+  if (!gw || gw.finished) return;
+  gw.finished = true;
+
+  if (gw.participants.length > 0) {
+    const winner = gw.participants[Math.floor(Math.random() * gw.participants.length)];
+    bot.sendMessage(gw.channel, `🏆 **برنده قرعه‌کشی (${gw.prize}) مشخص شد!**\n\n🎉 تبریک به کاربر: [${winner.name}](tg://user?id=${winner.id})\n\nلطفاً برای دریافت جایزه به ادمین پیام دهید.`, { parse_mode: 'Markdown' });
+  }
+}
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => { console.log(`Bot running on port ${PORT}`); });
