@@ -1,96 +1,83 @@
 const TelegramBot = require('node-telegram-bot-api');
-const express = require('express');
-const path = require('path');
+const axios = require('axios');
 
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
-
+// توکن ربات شما
 const TOKEN = '9173107929:AAG4CcOtg-8bT_4G_a4qJpN9LlJSrI7yBLg';
 const bot = new TelegramBot(TOKEN, { polling: true });
-const WEB_APP_URL = process.env.RENDER_EXTERNAL_URL || 'https://poker.onrender.com';
 
-// ذخیره‌سازی پایدار تنظیمات در حافظه سرور
-let sniperConfig = {
-    channelUsername: '@YourChannelUsername', 
-    minPrice: 10,
-    maxPrice: 500,
-    minDiscount: 10
-};
-
-const db = {
-    huntedItems: []
-};
-
-// دریافت تنظیمات فعلی در مینی‌اپ
-app.post('/api/config/get', (req, res) => {
-    res.json({ config: sniperConfig, stats: db.huntedItems });
-});
-
-// ذخیره تنظیمات کانال و فیلترها از داخل مینی‌اپ
-app.post('/api/config/save', (req, res) => {
-    const { channel, minPrice, maxPrice, minDiscount } = req.body;
-    
-    if (channel) {
-        // مطمئن شویم آیدی کانال با @ شروع می‌شود
-        sniperConfig.channelUsername = channel.startsWith('@') ? channel : '@' + channel;
-    }
-    if (minPrice) sniperConfig.minPrice = Number(minPrice);
-    if (maxPrice) sniperConfig.maxPrice = Number(maxPrice);
-    if (minDiscount) sniperConfig.minDiscount = Number(minDiscount);
-    
-    console.log('Updated Config:', sniperConfig);
-    res.json({ success: true, message: 'تنظیمات و کانال با موفقیت ذخیره شد!' });
-});
-
-// ارسال تست یا شکار به کانال تنظیم شده
-app.post('/api/test-hunt', async (req, res) => {
+// تابع دریافت قیمت TON به دلار و تومان
+async function getTonPrice() {
     try {
-        if (!sniperConfig.channelUsername || sniperConfig.channelUsername === '@YourChannelUsername') {
-            return res.status(400).json({ success: false, error: 'لطفاً ابتدا آیدی کانال خود را در مینی‌اپ وارد و ذخیره کنید!' });
-        }
-
-        const testItem = {
-            name: 'Golden Star Gift #777',
-            price: (sniperConfig.minPrice + 5),
-            floor: (sniperConfig.minPrice + 40),
-            link: 'https://t.me/nft/gift-777',
-            image: 'https://via.placeholder.com/300'
-        };
-
-        let caption = `🎯 **شکار ان‌اف‌تی / گیفت زیر قیمت!**\n\n` +
-                      `🎁 نام: **${testItem.name}**\n` +
-                      `💰 قیمت شکار: **${testItem.price} ⭐️**\n` +
-                      `📉 قیمت کف بازار: ~~${testItem.floor} ⭐️~~\n` +
-                      `💎 محدوده قیمت: (${sniperConfig.minPrice} تا ${sniperConfig.maxPrice} استارز)\n\n` +
-                      `⚡️ برای خرید سریع کلیک کنید:`;
-
-        await bot.sendPhoto(sniperConfig.channelUsername, testItem.image, {
-            caption: caption,
-            parse_mode: 'Markdown',
-            reply_markup: {
-                inline_keyboard: [[{ text: '🛒 خرید مستقیم از مارکت', url: testItem.link }]]
-            }
-        });
-
-        res.json({ success: true, message: `با موفقیت به کانال ${sniperConfig.channelUsername} ارسال شد!` });
-    } catch (err) {
-        console.error('Telegram Send Error:', err.message);
-        res.status(500).json({ success: false, error: 'خطا: ربات نمی‌تواند به کانال پیام بفرستد. مطمئن شوید ربات ادمین کانال است و آیدی صحیح است.' });
+        const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=usd,irr');
+        const data = response.data['the-open-network'];
+        const usd = data.usd;
+        const toman = Math.round(data.irr / 10); // تبدیل ریال به تومان
+        return { usd, toman };
+    } catch (error) {
+        console.error('خطا در دریافت قیمت:', error.message);
+        return null;
     }
-});
+}
 
-bot.onText(/\/start/, (msg) => {
+// پاسخ به دستور /start
+bot.onText(/\/start/, async (msg) => {
     const chatId = msg.chat.id;
-    bot.sendMessage(chatId, `🎯 **ربات هوشمند شکارچی گیفت و ان‌اف‌تی‌های تلگرام**\n\nبرای تنظیم کانال و فیلتر قیمت‌ها، از مینی‌اپ زیر استفاده کنید:`, {
-        reply_markup: {
-            inline_keyboard: [
-                [{ text: '⚙️ تنظیمات و مینی‌اپ شکارچی', web_app: { url: WEB_APP_URL } }]
-            ]
-        }
+    const userName = msg.from.first_name || 'کاربر';
+
+    const priceData = await getTonPrice();
+    
+    let priceText = "⚠️ در حال حاضر دریافت قیمت با خطا مواجه شد.";
+    if (priceData) {
+        priceText = `💎 **گزارش لحظه‌ای قیمت تون‌کوین (TON)**\n\n` +
+                    `💵 قیمت دلار: **$${priceData.usd}**\n` +
+                    `🇮🇷 قیمت تومان: **${priceData.toman.toLocaleString()} تومان**\n\n` +
+                    `🤖 ربات قیمت‌دهی فعال است.`;
+    }
+
+    const keyboard = {
+        inline_keyboard: [
+            [{ text: '🔄 به‌روزرسانی قیمت', callback_data: 'refresh_price' }]
+        ]
+    };
+
+    bot.sendMessage(chatId, `سلام ${userName} عزیز! 👋\n\n` + priceText, {
+        parse_mode: 'Markdown',
+        reply_markup: keyboard
     });
 });
 
-app.listen(PORT, () => console.log(`Sniper Bot running on port ${PORT}`));
+// مدیریت کلیک روی دکمه به‌روزرسانی
+bot.on('callback_query', async (query) => {
+    const chatId = query.message.chat.id;
+    const messageId = query.message.message_id;
+
+    if (query.data === 'refresh_price') {
+        const priceData = await getTonPrice();
+        if (priceData) {
+            const priceText = `💎 **گزارش لحظه‌ای قیمت تون‌کوین (TON)**\n\n` +
+                              `💵 قیمت دلار: **$${priceData.usd}**\n` +
+                              `🇮🇷 قیمت تومان: **${priceData.toman.toLocaleString()} تومان**\n\n` +
+                              `🤖 ربات قیمت‌دهی فعال است.`;
+
+            const keyboard = {
+                inline_keyboard: [
+                    [{ text: '🔄 به‌روزرسانی قیمت', callback_data: 'refresh_price' }]
+                ]
+            };
+
+            try {
+                await bot.editMessageText(priceText, {
+                    chat_id: chatId,
+                    message_id: messageId,
+                    parse_mode: 'Markdown',
+                    reply_markup: keyboard
+                });
+            } catch (e) {
+                // اگر قیمت تغییری نکرده باشد ممکن است ارور بدهد که نادیده گرفته می‌شود
+            }
+        }
+        bot.answerCallbackQuery(query.id, { text: 'قیمت به‌روز شد ✅' });
+    }
+});
+
+console.log('Bot is running...');
