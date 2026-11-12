@@ -13,10 +13,15 @@ app.use(express.static(path.join(__dirname, 'public')));
 // دیتابیس حافظه موقت
 let db = {
   adminId: null, 
-  adminWallet: 'UQD...AdminWalletAddressHere...', // آدرس والت ادمین
-  channels: [], 
+  adminWallet: 'UQD...AdminWalletAddressHere...', 
+  channels: [], // لیست کانال‌هایی که ربات در آن‌ها قیمت می‌فرستد
+  sendIntervalHours: 1, // زمان ارسال هر پیام (پیش‌فرض هر ۱ ساعت)
+  userBalances: {}, // { userId: balanceTon }
   subscriptions: {}, // { userId: { expireAt, channels: [] } }
-  prices: { 1: { days: 7, price: 1 }, 2: { days: 30, price: 3 } }
+  prices: { 
+    1: { days: 7, price: 1 }, 
+    2: { days: 30, price: 3 } 
+  }
 };
 
 let adminStates = {};
@@ -57,7 +62,6 @@ async function verifyTonTransaction(commentMemo, expectedAmount) {
   }
 }
 
-// دستور /start و منوی اصلی ربات
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
   const firstName = msg.from.first_name || 'کاربر';
@@ -73,77 +77,125 @@ bot.onText(/\/start/, (msg) => {
   });
 });
 
-// مدیریت کلیک دکمه‌های شیشه‌ای ربات
 bot.on('callback_query', async (query) => {
   const chatId = query.message.chat.id;
   const userId = query.from.id;
 
   if (query.data === 'admin_panel') {
-    if (!db.adminId) db.adminId = userId; // اولین کسی که پنل را باز کند ادمین می‌شود
+    if (!db.adminId) db.adminId = userId; 
     if (userId !== db.adminId) {
       return bot.answerCallbackQuery(query.id, { text: 'شما دسترسی ادمین ندارید!', show_alert: true });
     }
 
-    bot.sendMessage(chatId, `⚙️ **پنل مدیریت پیشرفته ادمین**\n\n- والت ثبت شده: \`${db.adminWallet}\`\n- تعداد کل کانال‌های فعال: ${db.channels.length}`, {
+    bot.sendMessage(chatId, `⚙️ **پنل مدیریت پیشرفته ادمین**\n\n- والت: \`${db.adminWallet}\`\n- تعداد کانال‌ها: ${db.channels.length}\n- زمان ارسال: هر ${db.sendIntervalHours} ساعت`, {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [
           [{ text: '📝 تغییر والت دریافت تون', callback_data: 'set_wallet' }],
-          [{ text: '📢 مشاهده لیست کانال‌ها', callback_data: 'list_channels' }],
-          [{ text: '📊 آمار کلی ربات', callback_data: 'bot_stats' }]
+          [{ text: '➕ افزودن کانال جدید', callback_data: 'add_channel' }],
+          [{ text: '⏱️ تنظیم زمان ارسال پیام', callback_data: 'set_interval' }],
+          [{ text: '💵 مدیریت واریز و افزایش موجودی', callback_data: 'add_balance' }],
+          [{ text: '🏷️ تعیین قیمت اشتراک‌ها', callback_data: 'set_prices' }],
+          [{ text: '📢 لیست کانال‌ها', callback_data: 'list_channels' }]
         ]
       }
     });
   } else if (query.data === 'set_wallet') {
     if (userId !== db.adminId) return;
     adminStates[userId] = 'WAITING_FOR_WALLET';
-    bot.sendMessage(chatId, `لطفاً آدرس جدید والت ادمین خود را ارسال کنید:`);
+    bot.sendMessage(chatId, `لطفاً آدرس جدید والت ادمین را بفرستید:`);
+  } else if (query.data === 'add_channel') {
+    if (userId !== db.adminId) return;
+    adminStates[userId] = 'WAITING_FOR_CHANNEL';
+    bot.sendMessage(chatId, `لطفاً آیدی کانال (مثلاً @ChannelID یا آیدی عددی) را بفرستید (اطمینان حاصل کنید ربات در کانال ادمین است):`);
+  } else if (query.data === 'set_interval') {
+    if (userId !== db.adminId) return;
+    adminStates[userId] = 'WAITING_FOR_INTERVAL';
+    bot.sendMessage(chatId, `تعداد ساعات بین هر ارسال را وارد کنید (مثلاً عدد 1 برای هر ساعت):`);
+  } else if (query.data === 'add_balance') {
+    if (userId !== db.adminId) return;
+    adminStates[userId] = 'WAITING_FOR_BALANCE';
+    bot.sendMessage(chatId, `فرمت را به این شکل بفرستید (آیدی عددی و مبلغ):\n\`UserID Amount\`\nمثال: \`123456789 5\``, { parse_mode: 'Markdown' });
+  } else if (query.data === 'set_prices') {
+    if (userId !== db.adminId) return;
+    adminStates[userId] = 'WAITING_FOR_PRICES';
+    bot.sendMessage(chatId, `فرمت قیمت‌ها را به این صورت بفرستید (روز و قیمت):\n\`Days Price\`\nمثال برای ۷ روز با ۱ تون: \`7 1\``, { parse_mode: 'Markdown' });
   } else if (query.data === 'list_channels') {
     if (userId !== db.adminId) return;
     const list = db.channels.length > 0 ? db.channels.join('\n') : 'هیچ کانالی ثبت نشده است.';
-    bot.sendMessage(chatId, `📢 **لیست کانال‌های متصل:**\n\n${list}`, { parse_mode: 'Markdown' });
-  } else if (query.data === 'bot_stats') {
-    if (userId !== db.adminId) return;
-    const activeSubs = Object.keys(db.subscriptions).length;
-    bot.sendMessage(chatId, `📊 **آمار ربات:**\n\n- کاربران دارای اشتراک فعال: ${activeSubs}\n- کل کانال‌ها: ${db.channels.length}`);
+    bot.sendMessage(chatId, `📢 **لیست کانال‌های ربات:**\n\n${list}`, { parse_mode: 'Markdown' });
   }
 });
 
-// دریافت پیام‌های متنی ادمین (برای تنظیم والت)
+// دریافت پیام‌های متنی ادمین برای مدیریت
 bot.on('message', (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
   const text = msg.text;
 
-  if (adminStates[userId] === 'WAITING_FOR_WALLET' && text) {
+  if (userId !== db.adminId || !adminStates[userId]) return;
+
+  const state = adminStates[userId];
+
+  if (state === 'WAITING_FOR_WALLET') {
     db.adminWallet = text.trim();
     delete adminStates[userId];
-    bot.sendMessage(chatId, `✅ والت ادمین با موفقیت به \`${db.adminWallet}\` تغییر یافت.`, { parse_mode: 'Markdown' });
+    bot.sendMessage(chatId, `✅ والت ادمین ثبت شد.`);
+  } else if (state === 'WAITING_FOR_CHANNEL') {
+    const ch = text.trim();
+    if (!db.channels.includes(ch)) db.channels.push(ch);
+    delete adminStates[userId];
+    bot.sendMessage(chatId, `✅ کانال ${ch} با موفقیت اضافه شد.`);
+  } else if (state === 'WAITING_FOR_INTERVAL') {
+    const hours = parseInt(text);
+    if (!isNaN(hours) && hours > 0) {
+      db.sendIntervalHours = hours;
+      delete adminStates[userId];
+      bot.sendMessage(chatId, `✅ زمان ارسال هر ${hours} ساعت تنظیم شد.`);
+    } else {
+      bot.sendMessage(chatId, `❌ مقدار نامعتبر است. یک عدد صحیح وارد کنید.`);
+    }
+  } else if (state === 'WAITING_FOR_BALANCE') {
+    const parts = text.split(' ');
+    if (parts.length >= 2) {
+      const targetUser = parts[0];
+      const amount = parseFloat(parts[1]);
+      if (!db.userBalances[targetUser]) db.userBalances[targetUser] = 0;
+      db.userBalances[targetUser] += amount;
+      delete adminStates[userId];
+      bot.sendMessage(chatId, `✅ موجودی کاربر ${targetUser} به میزان ${amount} تون افزایش یافت.`);
+    } else {
+      bot.sendMessage(chatId, `❌ فرمت اشتباه است. مثال: 123456789 5`);
+    }
+  } else if (state === 'WAITING_FOR_PRICES') {
+    const parts = text.split(' ');
+    if (parts.length >= 2) {
+      const days = parseInt(parts[0]);
+      const price = parseFloat(parts[1]);
+      const newId = Date.now();
+      db.prices[newId] = { days, price };
+      delete adminStates[userId];
+      bot.sendMessage(chatId, `✅ پلن اشتراک ${days} روزه با قیمت ${price} تون اضافه شد.`);
+    } else {
+      bot.sendMessage(chatId, `❌ فرمت اشتباه است. مثال: 7 1`);
+    }
   }
 });
 
-// ارسال خودکار قیمت به کانال‌ها هر ۱ ساعت
+// ارسال خودکار قیمت به تمام کانال‌های ثبت شده بر اساس زمان تنظیم شده توسط ادمین
 setInterval(async () => {
-  const now = Date.now();
   const { usd, tomman } = await getTonPrices();
   const emoji = '🟢'; 
 
-  for (const [userId, sub] of Object.entries(db.subscriptions)) {
-    if (sub.expireAt > now) {
-      for (const channelId of sub.channels) {
-        const text = `💎 **TONCOIN PRICE UPDATE**\n\n` +
-                     `💵 قیمت دلار: **$${usd}** ${emoji}\n` +
-                     `🇮🇷 قیمت تومان: **${tomman} تومان**\n\n` +
-                     `⏰ ساعت و تاریخ: ${new Date().toLocaleString('fa-IR', { timeZone: 'Asia/Tehran' })}`;
+  for (const channelId of db.channels) {
+    const text = `💎 **TONCOIN PRICE UPDATE**\n\n` +
+                 `💵 قیمت دلار: **$${usd}** ${emoji}\n` +
+                 `🇮🇷 قیمت تومان: **${tomman} تومان**\n\n` +
+                 `⏰ ساعت و تاریخ: ${new Date().toLocaleString('fa-IR', { timeZone: 'Asia/Tehran' })}`;
 
-        bot.sendMessage(channelId, text, { parse_mode: 'Markdown' }).catch(err => console.log('Channel send error:', err.message));
-      }
-    } else {
-      bot.sendMessage(userId, `⚠️ اشتراک شما در ربات به پایان رسید. لطفاً اشتراک خود را تمدید کنید.`);
-      delete db.subscriptions[userId];
-    }
+    bot.sendMessage(channelId, text, { parse_mode: 'Markdown' }).catch(err => console.log('Channel send error:', err.message));
   }
-}, 60 * 60 * 1000);
+}, db.sendIntervalHours * 60 * 60 * 1000);
 
 app.get('/api/data/:userId', (req, res) => {
   const userId = req.params.userId;
@@ -151,6 +203,7 @@ app.get('/api/data/:userId', (req, res) => {
   res.json({
     wallet: db.adminWallet,
     plans: db.prices,
+    balance: db.userBalances[userId] || 0,
     subscription: sub
   });
 });
@@ -170,26 +223,20 @@ app.post('/api/verify-payment', async (req, res) => {
       channels: db.subscriptions[userId]?.channels || []
     };
 
-    bot.sendMessage(userId, `✅ پرداخت شما با موفقیت تایید شد!\nاشتراک ${plan.days} روزه شما فعال گردید.`);
+    bot.sendMessage(userId, `✅ پرداخت تایید شد! اشتراک ${plan.days} روزه شما فعال گردید.`);
     return res.json({ success: true, message: 'پرداخت تایید شد' });
   } else {
-    return res.json({ success: false, message: 'تراکنش هنوز در بلاک‌چین تایید نشده است. لطفاً چند دقیقه دیگر تلاش کنید.' });
+    return res.json({ success: false, message: 'تراکنش در بلاک‌چین تایید نشد.' });
   }
 });
 
 app.post('/api/set-channel', (req, res) => {
   const { userId, channelUsername } = req.body;
-  if (!db.subscriptions[userId] || db.subscriptions[userId].expireAt < Date.now()) {
-    return res.status(403).json({ success: false, message: 'اشتراک فعال ندارید یا اشتراک شما منقضی شده است!' });
-  }
-
   const cleanChannel = channelUsername.trim();
-  if (!db.subscriptions[userId].channels.includes(cleanChannel)) {
-    db.subscriptions[userId].channels.push(cleanChannel);
-    if (!db.channels.includes(cleanChannel)) db.channels.push(cleanChannel);
+  if (!db.channels.includes(cleanChannel)) {
+    db.channels.push(cleanChannel);
   }
-
-  res.json({ success: true, message: 'کانال با موفقیت ثبت شد و ارسال قیمت آغاز خواهد شد' });
+  res.json({ success: true, message: 'کانال با موفقیت ثبت شد' });
 });
 
 const PORT = process.env.PORT || 3000;
