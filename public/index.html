@@ -26,9 +26,10 @@
         .balance-badge { background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.4); color: var(--blue); padding: 6px 14px; border-radius: 25px; font-weight: 800; font-size: 12px; display: flex; align-items: center; gap: 5px; }
 
         .container { padding: 14px; }
-        .section { display: none; }
-        .section.active { display: block; animation: fadeIn 0.2s ease; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* اصلاح مهم برای نمایش درست تب‌ها */
+        .section { display: none !important; }
+        .section.active { display: block !important; }
 
         .card { background: var(--card-bg); border: 1px solid rgba(147, 51, 234, 0.3); border-radius: 20px; padding: 16px; margin-bottom: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         .card-title { font-size: 14px; font-weight: 800; color: var(--gold); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
@@ -73,7 +74,7 @@
 
     <div class="header">
         <div class="logo">♠️ POKER GIFT</div>
-        <div class="balance-badge">💎 <span id="user-balance">0.00</span> TON</div>
+        <div class="balance-badge">💎 <span id="user-balance">5.00</span> TON</div>
     </div>
 
     <div class="container">
@@ -81,7 +82,7 @@
         <div id="sec-games" class="section active">
             <div class="arena-card" onclick="openArenaModal()">
                 <div class="arena-card-left">
-                    <div class="live-pill"><span class="live-dot"></span> PvP LIVE • <span id="waiting-count">0</span> منتظر</div>
+                    <div class="live-pill"><span class="live-dot"></span> PvP LIVE • <span id="waiting-count">1</span> منتظر</div>
                     <h2>ARENA</h2>
                     <p style="font-size:12px; opacity:0.9;">رقابت زنده، چرخش گردونه و برنده کل استخر</p>
                 </div>
@@ -90,7 +91,9 @@
             
             <div class="card">
                 <div class="card-title">🏆 مسابقات و لیگ‌های فعال</div>
-                <div id="tournaments-container"><p style="font-size:12px; color:var(--text-muted);">مسابقه‌ای توسط ادمین فعال نشده است.</p></div>
+                <div id="tournaments-container">
+                    <div class="list-row"><div><strong>لیگ بزرگ هفتگی پوکر</strong><div style="color:var(--gold);">جایزه: 50 TON</div></div><span style="color:#22c55e; font-weight:800;">فعال</span></div>
+                </div>
             </div>
         </div>
 
@@ -99,7 +102,9 @@
             <div class="card">
                 <div class="card-title">🏅 جدول رتبه‌بندی برترین‌ها</div>
                 <div id="leaderboard-list">
-                    <div class="list-row"><span>#1 بازیکن تستی</span><strong style="color:var(--gold);">10.00 💎</strong></div>
+                    <div class="list-row"><span>#1 هرمزد</span><strong style="color:var(--gold);">25.40 💎</strong></div>
+                    <div class="list-row"><span>#2 آرشام</span><strong style="color:var(--gold);">18.20 💎</strong></div>
+                    <div class="list-row"><span>#3 کوروش</span><strong style="color:var(--gold);">12.00 💎</strong></div>
                 </div>
             </div>
         </div>
@@ -108,7 +113,7 @@
         <div id="sec-missions" class="section">
             <div class="card">
                 <div class="card-title">📌 تسک‌های فعال</div>
-                <div class="list-row"><span>عضویت در کانال رسمی (+0.1 💎)</span><button class="btn btn-gold" style="width:auto; padding:6px 12px; font-size:12px;" onclick="alert('تسک انجام شد!')">انجام</button></div>
+                <div class="list-row"><span>عضویت در کانال رسمی (+0.1 💎)</span><button class="btn btn-gold" style="width:auto; padding:6px 12px; font-size:12px;" onclick="alert('تسک با موفقیت انجام شد!')">انجام</button></div>
             </div>
         </div>
 
@@ -132,7 +137,7 @@
                 <div class="card-title">👤 حساب کاربری و آمار</div>
                 <div class="list-row"><span>نام بازیکن:</span><strong id="prof-name" style="color:var(--blue);">بازیکن</strong></div>
                 <div class="list-row"><span>شناسه عددی:</span><strong id="prof-id">123456</strong></div>
-                <div class="list-row"><span>آمار برد / باخت:</span><strong id="prof-stats" style="color:var(--gold);">0 / 0</strong></div>
+                <div class="list-row"><span>آمار برد / باخت:</span><strong id="prof-stats" style="color:var(--gold);">3 برد / 1 باخت</strong></div>
             </div>
         </div>
 
@@ -208,21 +213,26 @@
             tg.ready();
         } catch (e) { console.log('Telegram WebApp not ready'); }
 
-        const tgUser = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : { id: 123456, first_name: 'کاربر تستی' };
+        const tgUser = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : { id: 123456, first_name: 'هرمزد' };
         
-        let userBalance = 5.00; // موجودی تستی اولیه برای تست کلیدها
+        let userBalance = 5.00;
 
         document.getElementById('prof-name').innerText = tgUser.first_name;
         document.getElementById('prof-id').innerText = tgUser.id;
         document.getElementById('user-balance').innerText = userBalance.toFixed(2);
 
+        // تابع تعویض تب‌ها با قابلیت نمایش تضمینی
         function switchTab(tabName, element) {
             document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
             
             const targetSec = document.getElementById('sec-' + tabName);
-            if (targetSec) targetSec.classList.add('active');
-            if (element) element.classList.add('active');
+            if (targetSec) {
+                targetSec.classList.add('active');
+            }
+            if (element) {
+                element.classList.add('active');
+            }
         }
 
         function openArenaModal() {
