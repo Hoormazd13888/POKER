@@ -216,7 +216,12 @@ bot.on('message', async (msg) => {
       const botInfo = await bot.getMe();
       let successCount = 0;
 
-      for (const ch of channels) {
+      for (let ch of channels) {
+        // تبدیل لینک کانال به آیدی با @ اگر کاربر لینک کامل فرستاده باشد
+        if (ch.startsWith('https://t.me/')) {
+          ch = '@' + ch.replace('https://t.me/', '');
+        }
+
         try {
           const captionText = `🎁 **قرعه‌کشی بزرگ: ${state.data.prize}**\n\n📝 ${state.data.description || 'بدون توضیحات'}\n\n👥 تعداد شرکت‌کنندگان: 0\n${state.data.type === 'TICKET' ? `🎫 تیکت‌ها: 0 از ${state.data.maxTickets}` : ''}`;
           const secondButtonText = state.data.type === 'TICKET' 
@@ -236,11 +241,13 @@ bot.on('message', async (msg) => {
           state.data.bannerMessageId = sentMsg.message_id;
           successCount++;
         } catch (e) {
-          bot.sendMessage(chatId, `❌ خطا در ارسال به کانال ${ch}: ${e.message}`);
+          bot.sendMessage(chatId, `❌ خطا در ارسال به کانال ${ch}: ${e.message}\n(مطمئن شوید ربات در کانال ادمین است و دسترسی ارسال پیام دارد)`);
         }
       }
 
-      bot.sendMessage(chatId, `🎉 قرعه‌کشی با موفقیت در ${successCount} کانال منتشر شد! (شناسه: ${giveawayId})`);
+      if (successCount > 0) {
+        bot.sendMessage(chatId, `🎉 قرعه‌کشی با موفقیت در ${successCount} کانال منتشر شد! (شناسه: ${giveawayId})`);
+      }
 
       if (state.data.type === 'FREE' && state.data.durationMinutes) {
         setTimeout(async () => {
@@ -371,4 +378,4 @@ async function finishGiveaway(giveawayId) {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => { console.log(`Bot running on port ${PORT}`); });
-                  
+            
