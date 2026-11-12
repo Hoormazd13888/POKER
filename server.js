@@ -1,29 +1,50 @@
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
 
-// توکن جدید ربات شما
 const TOKEN = '9289298651:AAFFN5vCUIf8EBsmdTrn12DtOGBKonO2G4k';
 const bot = new TelegramBot(TOKEN, { polling: true });
 
 const app = express();
-app.get('/', (req, res) => res.send('Giveaway Bot is running!'));
+app.get('/', (req, res) => res.send('Bot is running!'));
 
 let adminStates = {}; 
 let giveaways = {};   
 
-// دستور شروع ساخت قرعه‌کشی در پی‌وی ادمین
-bot.onText(/\/newgiveaway/, (msg) => {
+// پاسخ قطعی و سریع به دستور /start
+bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
-  
+  const firstName = msg.from.first_name || 'مدیر';
+
+  bot.sendMessage(chatId, `سلام ${firstName} عزیز! 🤖\nبه ربات مدیریت قرعه‌کشی خوش آمدید.\n\nبرای شروع ساخت قرعه‌کشی روی دکمه زیر کلیک کنید یا دستور /newgiveaway را بفرستید:`, {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: '🎁 ساخت قرعه‌کشی جدید', callback_data: 'start_giveaway' }]
+      ]
+    }
+  });
+});
+
+bot.onText(/\/newgiveaway/, (msg) => {
+  startGiveawayProcess(msg.chat.id);
+});
+
+bot.on('callback_query', (query) => {
+  const chatId = query.message.chat.id;
+  if (query.data === 'start_giveaway') {
+    startGiveawayProcess(chatId);
+    bot.answerCallbackQuery(query.id);
+  }
+});
+
+function startGiveawayProcess(chatId) {
   adminStates[chatId] = {
     step: 'BANNER',
     data: { participants: [], ticketsBought: 0 }
   };
 
   bot.sendMessage(chatId, `🎁 **ساخت قرعه‌کشی جدید**\n\nمرحله ۱ از ۵:\nلطفاً **عکس بنر** قرعه‌کشی را ارسال کنید.`, { parse_mode: 'Markdown' });
-});
+}
 
-// مدیریت مراحل ساخت و پاسخ‌های ادمین
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
@@ -32,7 +53,6 @@ bot.on('message', async (msg) => {
   if (!adminStates[chatId]) return;
   const state = adminStates[chatId];
 
-  // مرحله ۱: دریافت عکس بنر
   if (state.step === 'BANNER') {
     if (photo && photo.length > 0) {
       state.data.bannerFileId = photo[photo.length - 1].file_id;
@@ -42,19 +62,16 @@ bot.on('message', async (msg) => {
       bot.sendMessage(chatId, `⚠️ لطفاً یک تصویر (عکس) به عنوان بنر ارسال کنید.`);
     }
   }
-  // مرحله ۲: دریافت جایزه
   else if (state.step === 'PRIZE') {
     state.data.prize = text;
     state.step = 'DESC';
     bot.sendMessage(chatId, `✅ جایزه ثبت شد.\n\nمرحله ۳ از ۵:\n**توضیحات قرعه‌کشی** را بنویسید (اگر توضیحی ندارید، کلمه «رد» را بفرستید):`);
   }
-  // مرحله ۳: توضیحات
   else if (state.step === 'DESC') {
     state.data.description = text === 'رد' ? '' : text;
     state.step = 'TYPE';
     bot.sendMessage(chatId, `✅ توضیحات ثبت شد.\n\nمرحله ۴ از ۵:\nنوع قرعه‌کشی را انتخاب کنید:\n1️⃣ **رایگان** (با دعوت دوستان / لینک دعوت)\n2️⃣ **تیکتی** (خرید با Telegram Stars)\n\nلطفاً عدد **1** یا **2** را بفرستید:`);
   }
-  // مرحله ۴: نوع قرعه‌کشی (رایگان یا تیکتی)
   else if (state.step === 'TYPE') {
     if (text === '1') {
       state.data.type = 'FREE';
@@ -63,12 +80,11 @@ bot.on('message', async (msg) => {
     } else if (text === '2') {
       state.data.type = 'TICKET';
       state.step = 'TICKET_DETAILS';
-      bot.sendMessage(chatId, `🎫 قرعه‌کشی تیکتی انتخاب شد.\n\nفرمت را به این شکل بفرستید (قیمت هر تیکت به استارز و کل تیکت‌های لازم):\n\`قیمت_استارز تعداد_کل\`\nمثال (یعنی هر تیکت ۵ استارز و کل سقف ۱۰ تیکت):\n\`5 10\``, { parse_mode: 'Markdown' });
+      bot.sendMessage(chatId, `🎫 قرعه‌کشی تیکتی انتخاب شد.\n\nفرمت را به این شکل بفرستید (قیمت هر تیکت به استارز و کل تیکت‌های لازم):\n\`قیمت_استارز تعداد_کل\`\nمثال: \`5 10\``, { parse_mode: 'Markdown' });
     } else {
       bot.sendMessage(chatId, `⚠️ لطفاً فقط عدد 1 یا 2 را بفرستید.`);
     }
   }
-  // دریافت جزئیات تیکت
   else if (state.step === 'TICKET_DETAILS') {
     const parts = text.split(' ');
     if (parts.length >= 2) {
@@ -80,7 +96,6 @@ bot.on('message', async (msg) => {
       bot.sendMessage(chatId, `⚠️ فرمت اشتباه است. مثال: \`5 10\``, { parse_mode: 'Markdown' });
     }
   }
-  // دریافت زمان (برای حالت رایگان)
   else if (state.step === 'TIME') {
     const minutes = parseInt(text);
     if (!isNaN(minutes)) {
@@ -91,7 +106,6 @@ bot.on('message', async (msg) => {
       bot.sendMessage(chatId, `⚠️ لطفاً یک عدد معتبر به دقیقه وارد کنید.`);
     }
   }
-  // مرحله آخر: کانال مقصد، انتشار بنر و راه‌اندازی
   else if (state.step === 'CHANNELS') {
     const channel = text.trim();
     state.data.channel = channel;
@@ -107,12 +121,8 @@ bot.on('message', async (msg) => {
         parse_mode: 'Markdown',
         reply_markup: {
           inline_keyboard: [
-            [
-              { text: '🚀 ورود به ربات و شرکت', url: `https://t.me/${botInfo.username}?start=${giveawayId}` }
-            ],
-            [
-              { text: '👥 شرکت‌کنندگان: 0 نفر', callback_data: `participants_${giveawayId}` }
-            ]
+            [{ text: '🚀 ورود به ربات و شرکت', url: `https://t.me/${botInfo.username}?start=${giveawayId}` }],
+            [{ text: '👥 شرکت‌کنندگان: 0 نفر', callback_data: `participants_${giveawayId}` }]
           ]
         }
       });
@@ -120,7 +130,6 @@ bot.on('message', async (msg) => {
       state.data.bannerMessageId = sentMsg.message_id;
       bot.sendMessage(chatId, `🎉 قرعه‌کشی با موفقیت ساخته شد و در کانال ${channel} منتشر گردید!`);
 
-      // تایمر پایان قرعه‌کشی رایگان
       if (state.data.type === 'FREE' && state.data.durationMinutes) {
         setTimeout(async () => {
           await finishGiveaway(giveawayId);
@@ -132,99 +141,6 @@ bot.on('message', async (msg) => {
   }
 });
 
-// ورود کاربر به ربات از طریق لینک بنر
-bot.onText(/\/start (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const userId = msg.from.id;
-  const firstName = msg.from.first_name;
-  const param = match[1];
-
-  let giveawayId = param;
-  if (param.includes('_')) {
-    giveawayId = param.split('_')[0];
-  }
-
-  const gw = giveaways[giveawayId];
-  if (!gw || gw.finished) {
-    return bot.sendMessage(chatId, `❌ این قرعه‌کشی به پایان رسیده یا وجود ندارد.`);
-  }
-
-  // بررسی عضویت جوین اجباری (اگر کانال ست شده باشد)
-  if (gw.channel) {
-    try {
-      const chatMember = await bot.getChatMember(gw.channel, userId);
-      if (['left', 'kicked'].includes(chatMember.status)) {
-        return bot.sendMessage(chatId, `⚠️ برای شرکت در قرعه‌کشی باید ابتدا در کانال زیر عضو شوید:\n\n👉 ${gw.channel}\n\nپس از عضویت، دوباره روی لینک قرعه‌کشی کلیک کنید.`);
-      }
-    } catch (err) {
-      console.log('Error checking chat member:', err.message);
-    }
-  }
-
-  // بررسی تکراری نبودن
-  const alreadyJoined = gw.participants.some(p => p.id === userId);
-  if (!alreadyJoined) {
-    gw.participants.push({ id: userId, name: firstName });
-
-    if (gw.type === 'TICKET') {
-      gw.ticketsBought++;
-      bot.sendInvoice(
-        chatId,
-        'خرید تیکت قرعه‌کشی',
-        `خرید تیکت برای جایزه: ${gw.prize}`,
-        `ticket_${giveawayId}`,
-        'XTR',
-        [{ label: 'تیکت قرعه‌کشی', amount: gw.ticketPrice }]
-      );
-    } else {
-      const botInfo = await bot.getMe();
-      bot.sendMessage(chatId, `✅ شما با موفقیت در قرعه‌کشی شرکت کردید!\n\n🔗 لینک دعوت اختصاصی شما:\n\`https://t.me/${botInfo.username}?start=${giveawayId}_${userId}\``, { parse_mode: 'Markdown' });
-    }
-
-    // آپدیت زنده تعداد نفرات روی بنر کانال
-    updateBannerCaption(giveawayId);
-
-    // اگر مدل تیکتی بود و ظرفیت تکمیل شد
-    if (gw.type === 'TICKET' && gw.ticketsBought >= gw.maxTickets) {
-      finishGiveaway(giveawayId);
-    }
-  } else {
-    bot.sendMessage(chatId, `⚠️ شما قبلاً در این قرعه‌کشی شرکت کرده‌اید.`);
-  }
-});
-
-// آپدیت متن بنر در کانال
-async function updateBannerCaption(giveawayId) {
-  const gw = giveaways[giveawayId];
-  if (!gw || !gw.channel || !gw.bannerMessageId) return;
-
-  const botInfo = await bot.getMe();
-  const newCaption = `🎁 **قرعه‌کشی بزرگ: ${gw.prize}**\n\n📝 ${gw.description || 'بدون توضیحات'}\n\n👥 تعداد شرکت‌کنندگان: ${gw.participants.length}\n${gw.type === 'TICKET' ? `🎫 تیکت‌ها: ${gw.ticketsBought} از ${gw.maxTickets}` : ''}`;
-
-  try {
-    await bot.editMessageCaption(newCaption, {
-      chat_id: gw.channel,
-      message_id: gw.bannerMessageId,
-      parse_mode: 'Markdown',
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: '🚀 ورود به ربات و شرکت', url: `https://t.me/${botInfo.username}?start=${giveawayId}` }],
-          [{ text: `👥 شرکت‌کنندگان: ${gw.participants.length} نفر`, callback_data: `participants_${giveawayId}` }]
-        ]
-      }
-    });
-  } catch (e) {
-    console.log('Error updating caption:', e.message);
-  }
-}
-
-// پرداخت موفق استارز
-bot.on('pre_checkout_query', (query) => bot.answerPreCheckoutQuery(query.id, true));
-bot.on('successful_payment', (msg) => {
-  bot.sendMessage(msg.chat.id, `🎉 پرداخت استارز تایید شد و تیکت شما ثبت گردید.`);
-});
-
-// پایان قرعه‌کشی و اعلام برنده
 async function finishGiveaway(giveawayId) {
   const gw = giveaways[giveawayId];
   if (!gw || gw.finished) return;
@@ -247,5 +163,5 @@ async function finishGiveaway(giveawayId) {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Giveaway Bot running on port ${PORT}`);
+  console.log(`Bot running on port ${PORT}`);
 });
