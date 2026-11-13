@@ -11,7 +11,6 @@ let adminId = null;
 let adminStates = {}; 
 let giveaways = {};   
 
-// تابع تبدیل اعداد فارسی/عربی به انگلیسی برای جلوگیری از خطا در مراحل عددی
 function convertPersianNumbersToEnglish(str) {
   if (!str) return '';
   const persianNumbers = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
@@ -121,7 +120,6 @@ bot.on('message', async (msg) => {
 
   const state = adminStates[chatId];
 
-  // مرحله ۱: دریافت عکس بنر
   if (state.step === 'BANNER_PHOTO') {
     if (msg.photo && msg.photo.length > 0) {
       const photo = msg.photo;
@@ -276,17 +274,22 @@ bot.on('message', async (msg) => {
   }
 });
 
+// مدیریت دقیق دستور استارت با پارامتر (رفع کامل مشکل شناسایی شناسه قرعه‌کشی)
 bot.onText(/\/start (.+)/, async (msg, match) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
   const firstName = msg.from.first_name || 'کاربر';
-  const giveawayId = match[1].trim().split('_')[0];
+  const startParam = match[1].trim();
+  
+  // استخراج صحیح شناسه قرعه‌کشی (حتی اگر پارامتر رفرال یا شناسه کامل باشد)
+  const giveawayId = startParam.startsWith('gw_') ? startParam.split('_')[0] + '_' + startParam.split('_')[1] : startParam.split('_')[0];
 
   const gw = giveaways[giveawayId];
   if (!gw || gw.finished) {
     return bot.sendMessage(chatId, `❌ این قرعه‌کشی به پایان رسیده یا وجود ندارد.`);
   }
 
+  // بررسی عضویت اجباری
   if (gw.joinChannels && gw.joinChannels.length > 0) {
     let notJoinedChannels = [];
     for (let channel of gw.joinChannels) {
@@ -385,8 +388,8 @@ bot.on('successful_payment', async (msg) => {
   const chatId = msg.chat.id;
   const payload = msg.successful_payment.invoice_payload; 
   const parts = payload.split('_');
-  const giveawayId = parts[1];
-  const userId = parseInt(parts[2], 10);
+  const giveawayId = parts[1] + '_' + parts[2];
+  const userId = parseInt(parts[3], 10);
   const firstName = msg.from.first_name || 'کاربر';
 
   const gw = giveaways[giveawayId];
@@ -460,3 +463,4 @@ async function finishGiveaway(giveawayId) {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => { console.log(`Bot running on port ${PORT}`); });
+          
