@@ -11,6 +11,7 @@ let adminId = null;
 let adminStates = {}; 
 let giveaways = {};   
 
+// تابع تبدیل اعداد فارسی/عربی به انگلیسی برای جلوگیری از خطا در مراحل عددی
 function convertPersianNumbersToEnglish(str) {
   if (!str) return '';
   const persianNumbers = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
@@ -120,6 +121,7 @@ bot.on('message', async (msg) => {
 
   const state = adminStates[chatId];
 
+  // مرحله ۱: دریافت عکس بنر
   if (state.step === 'BANNER_PHOTO') {
     if (msg.photo && msg.photo.length > 0) {
       const photo = msg.photo;
@@ -159,7 +161,7 @@ bot.on('message', async (msg) => {
       break;
 
     case 'WINNERS_COUNT':
-      const winnersCount = parseInt(cleanText);
+      const winnersCount = parseInt(cleanText, 10);
       if (!isNaN(winnersCount) && winnersCount > 0) {
         state.data.winnersCount = winnersCount;
         state.step = 'TYPE';
@@ -183,8 +185,8 @@ bot.on('message', async (msg) => {
     case 'TICKET_DETAILS':
       const numbers = cleanText.match(/\d+/g);
       if (numbers && numbers.length >= 2) {
-        state.data.ticketPrice = parseInt(numbers[0]);
-        state.data.maxTickets = parseInt(numbers[1]);
+        state.data.ticketPrice = parseInt(numbers[0], 10);
+        state.data.maxTickets = parseInt(numbers[1], 10);
         state.step = 'JOIN_CHANNELS';
         bot.sendMessage(chatId, `✅ جزئیات تیکت ثبت شد.\n\n🔒 **مرحله ۶ از ۷ (جوین اجباری):**\nآیدی کانال‌ها را بفرستید (**هر کانال در یک خط**، مثل @Channel یا اگر ندارید «رد» بفرستید):`, {
           parse_mode: 'Markdown',
@@ -196,7 +198,7 @@ bot.on('message', async (msg) => {
       break;
 
     case 'TIME':
-      const minutes = parseInt(cleanText);
+      const minutes = parseInt(cleanText, 10);
       if (!isNaN(minutes)) {
         state.data.durationMinutes = minutes;
         state.step = 'JOIN_CHANNELS';
@@ -278,14 +280,13 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
   const firstName = msg.from.first_name || 'کاربر';
-  const giveawayId = match[1].trim().split('_')[0]; // برای پشتیبانی از پارامترهای رفرال
+  const giveawayId = match[1].trim().split('_')[0];
 
   const gw = giveaways[giveawayId];
   if (!gw || gw.finished) {
     return bot.sendMessage(chatId, `❌ این قرعه‌کشی به پایان رسیده یا وجود ندارد.`);
   }
 
-  // بررسی عضویت اجباری
   if (gw.joinChannels && gw.joinChannels.length > 0) {
     let notJoinedChannels = [];
     for (let channel of gw.joinChannels) {
@@ -385,7 +386,7 @@ bot.on('successful_payment', async (msg) => {
   const payload = msg.successful_payment.invoice_payload; 
   const parts = payload.split('_');
   const giveawayId = parts[1];
-  const userId = parseInt(parts[2]);
+  const userId = parseInt(parts[2], 10);
   const firstName = msg.from.first_name || 'کاربر';
 
   const gw = giveaways[giveawayId];
@@ -459,4 +460,3 @@ async function finishGiveaway(giveawayId) {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => { console.log(`Bot running on port ${PORT}`); });
-                                                                   
