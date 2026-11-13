@@ -11,6 +11,7 @@ let adminId = null;
 let adminStates = {}; 
 let giveaways = {};   
 
+// تابع تبدیل اعداد فارسی/عربی به انگلیسی
 function convertPersianNumbersToEnglish(str) {
   if (!str) return '';
   const persianNumbers = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
@@ -22,11 +23,16 @@ function convertPersianNumbersToEnglish(str) {
   return result;
 }
 
+// دستور /admin برای تعیین یا ورود ادمین اصلی
 bot.onText(/\/admin/, (msg) => {
   const chatId = msg.chat.id;
-  if (!adminId) adminId = chatId;
+  const userId = msg.from.id;
 
-  if (chatId !== adminId) {
+  if (!adminId) {
+    adminId = userId; // ثبت اولین کاربری که /admin بفرستد به عنوان ادمین
+  }
+
+  if (userId !== adminId) {
     return bot.sendMessage(chatId, `⚠️ **دسترسی غیرمجاز!**\nاین ربات انحصاری است و شما دسترسی ادمین ندارید.`, { parse_mode: 'Markdown' });
   }
 
@@ -45,12 +51,40 @@ function sendAdminMenu(chatId) {
   });
 }
 
+// بررسی کامل و امن رویداد دکمه‌های شیشه‌ای
 bot.on('callback_query', async (query) => {
   const chatId = query.message.chat.id;
   const userId = query.from.id;
   const data = query.data;
 
-  if (userId !== adminId && !data.startsWith('check_')) {
+  // بررسی دکمه‌های مربوط به شرکت‌کنندگان (برای همه کاربران آزاد است)
+  if (data.startsWith('info_')) {
+    const giveawayId = data.replace('info_', '');
+    const gw = giveaways[giveawayId];
+    if (gw) {
+      const infoText = gw.type === 'TICKET' 
+        ? `🎫 تیکت‌های فروخته شده: ${gw.ticketsBought} از ${gw.maxTickets}` 
+        : `👥 تعداد شرکت‌کنندگان: ${gw.participants.length} نفر`;
+      bot.answerCallbackQuery(query.id, { text: infoText, show_alert: true });
+    } else {
+      bot.answerCallbackQuery(query.id, { text: 'اطلاعاتی یافت نشد یا قرعه‌کشی به پایان رسیده است.', show_alert: true });
+    }
+    return;
+  }
+
+  // بررسی دکمه بررسی عضویت جوین اجباری
+  if (data.startsWith('check_')) {
+    const giveawayId = data.replace('check_', '');
+    const gw = giveaways[giveawayId];
+    if (!gw || gw.finished) {
+      return bot.answerCallbackQuery(query.id, { text: '❌ این قرعه‌کشی پایان یافته است.', show_alert: true });
+    }
+    await checkMembershipAndJoin(chatId, userId, query.from.first_name || 'کاربر', giveawayId, query.id);
+    return;
+  }
+
+  // دکمه‌های پنل ادمین (فقط ادمین اصلی)
+  if (adminId && userId !== adminId) {
     return bot.answerCallbackQuery(query.id, { text: 'شما ادمین نیستید!', show_alert: true });
   }
 
@@ -89,37 +123,20 @@ bot.on('callback_query', async (query) => {
       reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'cancel_gw' }]] }
     });
     bot.answerCallbackQuery(query.id);
-  } else if (data.startsWith('info_')) {
-    const giveawayId = data.replace('info_', '');
-    const gw = giveaways[giveawayId];
-    if (gw) {
-      const infoText = gw.type === 'TICKET' 
-        ? `🎫 تیکت‌های فروخته شده: ${gw.ticketsBought} از ${gw.maxTickets}` 
-        : `👥 تعداد شرکت‌کنندگان: ${gw.participants.length} نفر`;
-      bot.answerCallbackQuery(query.id, { text: infoText, show_alert: true });
-    } else {
-      bot.answerCallbackQuery(query.id, { text: 'اطلاعاتی یافت نشد یا قرعه‌کشی به پایان رسیده است.', show_alert: true });
-    }
-  } else if (data.startsWith('check_')) {
-    const giveawayId = data.replace('check_', '');
-    const gw = giveaways[giveawayId];
-    if (!gw || gw.finished) {
-      return bot.answerCallbackQuery(query.id, { text: '❌ این قرعه‌کشی پایان یافته است.', show_alert: true });
-    }
-
-    await checkMembershipAndJoin(chatId, userId, query.from.first_name || 'کاربر', giveawayId, query.id);
   }
 });
 
+// مدیریت جامع پیام‌های متنی و عکس‌های ادمین در ویزارد
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
 
-  if (userId !== adminId) return;
+  if (!adminId || userId !== adminId) return;
   if (!adminStates[chatId]) return;
 
   const state = adminStates[chatId];
 
+  // مرحله ۱: دریافت عکس بنر
   if (state.step === 'BANNER_PHOTO') {
     if (msg.photo && msg.photo.length > 0) {
       const photo = msg.photo;
@@ -163,7 +180,7 @@ bot.on('message', async (msg) => {
       if (!isNaN(winnersCount) && winnersCount > 0) {
         state.data.winnersCount = winnersCount;
         state.step = 'TYPE';
-        bot.sendMessage(chatId, `✅ تعداد برندگان (${winnersCount} نفر) ثبت شد.\n\n⚙️ **مرحله ۵ از ۷:**\nنوع قرعه‌کشی را انتخاب کنید:`, {
+        bot.sendMessage(chatId, `✅ تعداد برندگان (${winnersCount} نفر) ثبت شد.\n\n⚙️ **مرحله ۵ از ۷:**\nنوع قرعه‌کشی را انتخاب کنید (روی یکی از دکمه‌های زیر کلیک کنید):`, {
           parse_mode: 'Markdown',
           reply_markup: {
             inline_keyboard: [
@@ -274,14 +291,13 @@ bot.on('message', async (msg) => {
   }
 });
 
-// مدیریت دقیق دستور استارت با پارامتر (رفع کامل مشکل شناسایی شناسه قرعه‌کشی)
+// مدیریت دقیق دستور استارت با پارامتر
 bot.onText(/\/start (.+)/, async (msg, match) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
   const firstName = msg.from.first_name || 'کاربر';
   const startParam = match[1].trim();
   
-  // استخراج صحیح شناسه قرعه‌کشی (حتی اگر پارامتر رفرال یا شناسه کامل باشد)
   const giveawayId = startParam.startsWith('gw_') ? startParam.split('_')[0] + '_' + startParam.split('_')[1] : startParam.split('_')[0];
 
   const gw = giveaways[giveawayId];
@@ -289,7 +305,7 @@ bot.onText(/\/start (.+)/, async (msg, match) => {
     return bot.sendMessage(chatId, `❌ این قرعه‌کشی به پایان رسیده یا وجود ندارد.`);
   }
 
-  // بررسی عضویت اجباری
+  // بررسی جوین اجباری
   if (gw.joinChannels && gw.joinChannels.length > 0) {
     let notJoinedChannels = [];
     for (let channel of gw.joinChannels) {
@@ -377,7 +393,7 @@ async function proceedToJoin(chatId, userId, firstName, giveawayId, gw) {
 
 bot.onText(/\/start$/, async (msg) => {
   const chatId = msg.chat.id;
-  if (chatId === adminId) return;
+  if (adminId && chatId === adminId) return;
 
   bot.sendMessage(chatId, `❄️ **سلام و احترام به ربات رسمی POKER خوش آمدید.**\n\n🤖 این سیستم پلتفرم هوشمند مدیریت و اجرای چالش‌های رایگان کانال و لاتاری‌های معتبر بر پایه ستارگان تلگرام می‌باشد.\n\n⚠️ دسترسی به قابلیت‌های این ربات انحصاری است و استفاده عمومی آزاد نیست.`, { parse_mode: 'Markdown' });
 });
@@ -463,4 +479,4 @@ async function finishGiveaway(giveawayId) {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => { console.log(`Bot running on port ${PORT}`); });
-          
+  
