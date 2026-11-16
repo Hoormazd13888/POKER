@@ -1,6 +1,12 @@
 import asyncio
 import logging
-from emoji_forge.bot import main
+import sys
+import os
+
+# اضافه کردن پوشه src به مسیر اجرای پایتون
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
+
+from bot import main
 
 if __name__ == "__main__":
     logging.basicConfig(
@@ -11,4 +17,4 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         print("Bot stopped by user.")
-      
+        
