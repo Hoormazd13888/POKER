@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>مافیا</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="box">
+    <h2>🎭 مافیا</h2>
+    <p id="statusText">در حال اتصال...</p>
+    <input id="roomCodeInput" placeholder="کد اتاق (مثلاً MAFIA1)" />
+    <button onclick="enterRoom()">ورود / ساخت اتاق</button>
+  </div>
+
+  <div id="gameBox" class="box hidden">
+    <h3>اتاق: <span id="roomTitle"></span></h3>
+    <p>نقش مخفی شما: <strong id="myRole">نامشخص</strong></p>
+    <p>راوی: <span id="narrator">منتظر شروع...</span></p>
+    <p>زمان: <strong id="timer">60</strong> ثانیه</p>
+
+    <div id="hostBtns" class="hidden">
+      <button onclick="startMatch()">شروع بازی</button>
+      <button onclick="goNight()">شروع شب</button>
+      <button onclick="goVoting()">رأی‌گیری</button>
+    </div>
+
+    <div id="players"></div>
+
+    <div id="chatBox" class="chat"></div>
+    <input id="msgInput" placeholder="پیام بنویس..." />
+    <button onclick="sendMsg()">ارسال</button>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
